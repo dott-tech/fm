@@ -22,7 +22,8 @@ function toActivity(income: IncomeEntry[], expenses: Expense[], limit: number): 
         id: e.id,
         date: e.date,
         createdAt: e.createdAt,
-        title: `${category?.icon ?? ''} ${category?.label ?? e.category}`.trim(),
+        // Paid bills carry the bill's name in the note ("📅 Car installment").
+        title: `${category?.icon ?? ''} ${e.category === 'bills' && e.note ? e.note : (category?.label ?? e.category)}`.trim(),
         amount: e.amount,
         kind: 'expense' as const,
       }

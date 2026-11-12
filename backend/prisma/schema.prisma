@@ -33,7 +33,20 @@ enum ExpenseCategory {
   repairs
   tyres
   phone_data
+  bills // a fixed bill paid from a pot (installment, rent, ...)
   other
+}
+
+enum PotKind {
+  bill // fixed amount due on a date, may repeat (car installment, rent)
+  goal // savings goal or personal need (new tyres, Eid, emergency fund)
+}
+
+enum RepeatUnit {
+  day
+  week
+  month
+  year
 }
 
 // Shaped to match Better Auth's user table (string id, emailVerified, image),
@@ -55,6 +68,8 @@ model User {
   accounts      Account[]
   incomeEntries IncomeEntry[]
   expenses      Expense[]
+  pots          Pot[]
+  potTransfers  PotTransfer[]
 
   @@map("users")
 }
@@ -150,4 +165,54 @@ model Verification {
 
   @@index([identifier])
   @@map("verifications")
+}
+
+// ---------- Pots: money put aside day by day ----------
+
+// A pot is something the driver puts money aside for: a fixed bill or a goal.
+// How much is in it is not stored here: it's the sum of its transfers, so the
+// history is complete and the balance can never drift out of sync.
+model Pot {
+  id           String      @id @default(uuid()) @db.Uuid
+  userId       String      @map("user_id")
+  kind         PotKind
+  name         String      @db.VarChar(80)
+  icon         String?     @db.VarChar(16)
+  // Bill: the amount due. Goal: the amount needed.
+  targetAmount Int         @map("target_amount")
+  // Bill: next due date (required). Goal: optional deadline.
+  dueDate      DateTime?   @map("due_date") @db.Date
+  // Bills only: repeats every N units (e.g. 1 month). Null = one-off.
+  repeatEvery  Int?        @map("repeat_every")
+  repeatUnit   RepeatUnit? @map("repeat_unit")
+  // Goals without a deadline: how much the driver chose to put aside per day.
+  dailyAmount  Int?        @map("daily_amount")
+  // Set when a one-off bill is paid or a goal is completed/closed.
+  archivedAt   DateTime?   @map("archived_at")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transfers PotTransfer[]
+
+  @@index([userId, archivedAt])
+  @@map("pots")
+}
+
+// Money moved into (+) or out of (-) a pot on a given day.
+model PotTransfer {
+  id        String   @id @default(uuid()) @db.Uuid
+  potId     String   @map("pot_id") @db.Uuid
+  userId    String   @map("user_id")
+  date      DateTime @db.Date
+  amount    Int // positive = put aside, negative = taken out / spent
+  note      String?  @db.VarChar(200)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  pot  Pot  @relation(fields: [potId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([potId])
+  @@index([userId, date])
+  @@map("pot_transfers")
 }

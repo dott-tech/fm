@@ -16,23 +16,27 @@ export function AmountInput({
   value,
   onChange,
   currency,
+  id = "amount",
+  autoFocus = true,
 }: {
   label: string
   value: number
   onChange: (value: number) => void
   currency: string
+  id?: string
+  autoFocus?: boolean
 }) {
   return (
     <div>
-      <label htmlFor="amount" className="mb-1.5 block text-sm font-medium text-stone-700">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-stone-700">
         {label}
       </label>
       <div className="flex items-baseline gap-2 rounded-2xl border-2 border-stone-300 bg-white px-4 py-3 focus-within:border-emerald-600">
         <input
-          id="amount"
+          id={id}
           inputMode="numeric"
           autoComplete="off"
-          autoFocus
+          autoFocus={autoFocus}
           placeholder="0"
           value={value ? formatNumber(value) : ''}
           onChange={(e) => onChange(parseAmount(e.target.value))}

@@ -7,7 +7,7 @@ import { idParamSchema, listQuerySchema, optionalNote, positiveAmount } from "..
 import { validate } from "../lib/validate.js";
 import { requireAuth, type AuthEnv } from "../middleware/require-auth.js";
 
-const CATEGORIES = ["fuel", "oil_change", "repairs", "tyres", "phone_data", "other"] as const;
+const CATEGORIES = ["fuel", "oil_change", "repairs", "tyres", "phone_data", "bills", "other"] as const;
 
 const createExpenseSchema = z.object({
   date: isoDate,

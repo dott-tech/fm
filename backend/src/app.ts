@@ -5,6 +5,7 @@ import { expenses } from "./routes/expenses.js";
 import { health } from "./routes/health.js";
 import { income } from "./routes/income.js";
 import { me } from "./routes/me.js";
+import { pots } from "./routes/pots.js";
 import { summary } from "./routes/summary.js";
 
 // The app is defined separately from how it's started (index.ts), so the
@@ -22,3 +23,4 @@ app.route("/me", me);
 app.route("/income", income);
 app.route("/expenses", expenses);
 app.route("/summary", summary);
+app.route("/pots", pots);

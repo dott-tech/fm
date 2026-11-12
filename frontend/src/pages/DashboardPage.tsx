@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { RecentActivity } from '../components/RecentActivity'
 import { TargetEditor } from '../components/TargetEditor'
-import { api, type WeekSummary } from '../lib/api'
+import { TodaySetAside } from '../components/TodaySetAside'
+import { api, type PotsOverview, type WeekSummary } from '../lib/api'
 import { authClient } from '../lib/auth-client'
 import { daysUntil, formatCompact, formatMoney, formatNumber, formatWeekRange, localIsoDate } from '../lib/format'
 import { EXPENSE_CATEGORIES } from '../lib/labels'
@@ -16,13 +17,17 @@ export function DashboardPage() {
   const flash = (location.state as { flash?: string } | null)?.flash
 
   const [week, setWeek] = useState<WeekSummary | null>(null)
+  const [pots, setPots] = useState<PotsOverview | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [editingTarget, setEditingTarget] = useState(false)
 
+  // Both requests run in parallel; the screen shows when both are back.
   const loadWeek = useCallback(() => {
-    api<WeekSummary>(`/summary/week?date=${localIsoDate()}`)
-      .then((data) => {
-        setWeek(data)
+    const today = localIsoDate()
+    Promise.all([api<WeekSummary>(`/summary/week?date=${today}`), api<PotsOverview>(`/pots?date=${today}`)])
+      .then(([weekData, potsData]) => {
+        setWeek(weekData)
+        setPots(potsData)
         setLoadError(false)
       })
       .catch(() => setLoadError(true))
@@ -98,6 +103,8 @@ export function DashboardPage() {
           <Link to="/week" className="mt-2 block px-1 py-2 text-sm font-semibold text-emerald-700">
             Weekly summary & past weeks →
           </Link>
+
+          {pots && <TodaySetAside overview={pots} currency={currency} onChange={setPots} />}
         </>
       )}
 

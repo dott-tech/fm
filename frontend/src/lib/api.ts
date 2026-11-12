@@ -50,7 +50,7 @@ export type NewIncome = Omit<IncomeEntry, 'id' | 'createdAt'>
 
 export type IncomeDefaults = { source: IncomeSource; platform: string | null }
 
-export type ExpenseCategory = 'fuel' | 'oil_change' | 'repairs' | 'tyres' | 'phone_data' | 'other'
+export type ExpenseCategory = 'fuel' | 'oil_change' | 'repairs' | 'tyres' | 'phone_data' | 'bills' | 'other'
 
 export type Expense = {
   id: string
@@ -64,6 +64,48 @@ export type Expense = {
 export type NewExpense = Omit<Expense, 'id' | 'createdAt'>
 
 export type ExpenseDefaults = { category: ExpenseCategory }
+
+// ---- Pots: bills and goals with a daily set-aside amount ----
+
+export type PotKind = 'bill' | 'goal'
+export type RepeatUnit = 'day' | 'week' | 'month' | 'year'
+
+export type Pot = {
+  id: string
+  kind: PotKind
+  name: string
+  icon: string | null
+  targetAmount: number
+  dueDate: string | null
+  repeatEvery: number | null
+  repeatUnit: RepeatUnit | null
+  chosenDailyAmount: number | null
+  saved: number
+  remaining: number
+  daysLeft: number | null
+  overdue: boolean
+  dailyAmount: number
+  todayLeft: number
+  funded: boolean
+}
+
+export type PotsOverview = {
+  date: string
+  todayTotal: number // all pots' daily amounts
+  todayLeft: number // what's still to put aside today
+  pots: Pot[]
+}
+
+export type NewPot = {
+  kind: PotKind
+  name: string
+  icon?: string | null
+  targetAmount: number
+  dueDate?: string | null
+  repeatEvery?: number | null
+  repeatUnit?: RepeatUnit | null
+  dailyAmount?: number | null
+}
 
 // GET /api/summary/week?date=YYYY-MM-DD
 export type WeekSummary = {

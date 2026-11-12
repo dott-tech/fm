@@ -73,7 +73,7 @@ export function AddExpensePage() {
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium text-stone-700">On what</legend>
           <div className="grid grid-cols-3 gap-2">
-            {EXPENSE_CATEGORIES.map((option) => {
+            {EXPENSE_CATEGORIES.filter((c) => c.pickable).map((option) => {
               const selected = option.value === category
               return (
                 <button

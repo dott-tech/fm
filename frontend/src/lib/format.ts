@@ -15,7 +15,8 @@ export function formatNumber(value: number): string {
 const compactFormat = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 })
 
 export function formatCompact(value: number): string {
-  return compactFormat.format(value)
+  // Typographic minus (−) instead of a hyphen for negative values.
+  return compactFormat.format(value).replace('-', '−')
 }
 
 function parseIsoDay(isoDay: string): Date {

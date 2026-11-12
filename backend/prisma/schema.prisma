@@ -37,8 +37,7 @@ enum ExpenseCategory {
 }
 
 // Shaped to match Better Auth's user table (string id, emailVerified, image),
-// plus our own fields. Auth tables (session, account, verification) get added
-// in the auth step.
+// plus our own fields.
 model User {
   id            String   @id
   name          String
@@ -52,6 +51,8 @@ model User {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
+  sessions      Session[]
+  accounts      Account[]
   incomeEntries IncomeEntry[]
   expenses      Expense[]
 
@@ -93,4 +94,60 @@ model Expense {
 
   @@index([userId, date])
   @@map("expenses")
+}
+
+// ---------- Auth tables (managed by Better Auth) ----------
+
+// A logged-in device. The token lives in an httpOnly cookie in the browser.
+model Session {
+  id        String   @id
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// How a user logs in. For email + password, providerId is "credential" and
+// password holds the hash (never the plain password). OAuth columns are here
+// so Google login etc. can be added later without a schema change.
+model Account {
+  id                    String    @id
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+// Short-lived codes (email verification, password reset).
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verifications")
 }

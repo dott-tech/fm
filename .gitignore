@@ -23,3 +23,6 @@ Thumbs.db
 
 # generated Prisma client
 backend/src/generated/
+
+# local Claude Code / editor tooling
+.claude/

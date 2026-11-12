@@ -1,7 +1,10 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-
+// Database schema. Run `npm run db:migrate` after changing it.
+// Conventions:
+// - Money is stored as whole numbers (Int) in the user's currency. IQD has no
+//   decimals, so there are no rounding errors.
+// - Entry dates are calendar days (@db.Date), not timestamps, so an entry
+//   logged at 11pm never shifts to another day because of time zones.
+// - Tables and columns are snake_case in Postgres, camelCase in TypeScript.
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +13,84 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  cab_driver
+  delivery_rider
+}
+
+enum IncomeSource {
+  cab
+  delivery
+  freelance
+  other
+}
+
+enum ExpenseCategory {
+  fuel
+  oil_change
+  repairs
+  tyres
+  phone_data
+  other
+}
+
+// Shaped to match Better Auth's user table (string id, emailVerified, image),
+// plus our own fields. Auth tables (session, account, verification) get added
+// in the auth step.
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false) @map("email_verified")
+  image         String?
+  role          Role     @default(cab_driver)
+  currency      String   @default("IQD") @db.VarChar(3)
+  // Weekly earnings goal after costs. Null = no target set yet.
+  weeklyTarget  Int?     @map("weekly_target")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  incomeEntries IncomeEntry[]
+  expenses      Expense[]
+
+  @@map("users")
+}
+
+model IncomeEntry {
+  id         String       @id @default(uuid()) @db.Uuid
+  userId     String       @map("user_id")
+  date       DateTime     @db.Date
+  amount     Int
+  hours      Decimal?     @db.Decimal(4, 2) // e.g. 7.50 hours
+  orderCount Int?         @map("order_count")
+  tips       Int?
+  platform   String?      @db.VarChar(50) // free text: Toters, Talabat, direct...
+  source     IncomeSource
+  note       String?
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Every dashboard query is "this user's entries between two dates".
+  @@index([userId, date])
+  @@map("income_entries")
+}
+
+model Expense {
+  id        String          @id @default(uuid()) @db.Uuid
+  userId    String          @map("user_id")
+  date      DateTime        @db.Date
+  amount    Int
+  category  ExpenseCategory
+  note      String?
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("expenses")
 }

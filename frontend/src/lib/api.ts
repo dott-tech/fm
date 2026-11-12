@@ -49,3 +49,18 @@ export type IncomeEntry = {
 export type NewIncome = Omit<IncomeEntry, 'id' | 'createdAt'>
 
 export type IncomeDefaults = { source: IncomeSource; platform: string | null }
+
+export type ExpenseCategory = 'fuel' | 'oil_change' | 'repairs' | 'tyres' | 'phone_data' | 'other'
+
+export type Expense = {
+  id: string
+  date: string // YYYY-MM-DD
+  amount: number
+  category: ExpenseCategory
+  note: string | null
+  createdAt: string
+}
+
+export type NewExpense = Omit<Expense, 'id' | 'createdAt'>
+
+export type ExpenseDefaults = { category: ExpenseCategory }

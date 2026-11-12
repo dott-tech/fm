@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { GuestOnly, RequireAuth } from './components/RequireAuth'
 import './index.css'
+import { AddExpensePage } from './pages/AddExpensePage'
 import { AddIncomePage } from './pages/AddIncomePage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
@@ -19,6 +20,7 @@ createRoot(document.getElementById('root')!).render(
         <Route element={<RequireAuth />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/income/new" element={<AddIncomePage />} />
+          <Route path="/expenses/new" element={<AddExpensePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

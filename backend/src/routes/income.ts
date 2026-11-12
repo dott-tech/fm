@@ -3,37 +3,27 @@ import { z } from "zod";
 import type { IncomeEntry } from "../generated/prisma/client.js";
 import { prisma } from "../db.js";
 import { fromDbDate, isoDate, toDbDate } from "../lib/dates.js";
+import { idParamSchema, listQuerySchema, money, optionalNote, positiveAmount } from "../lib/schemas.js";
 import { validate } from "../lib/validate.js";
 import { requireAuth, type AuthEnv } from "../middleware/require-auth.js";
 
 const SOURCES = ["cab", "delivery", "freelance", "other"] as const;
 
-// Money is whole IQD. Upper bound just catches typos (an extra zero or three).
-const money = z.number().int("Must be a whole number").min(0).max(100_000_000);
-
 const createIncomeSchema = z.object({
   date: isoDate,
-  amount: money.min(1, "Amount must be at least 1"),
+  amount: positiveAmount,
   source: z.enum(SOURCES),
   hours: z.number().min(0).max(24).nullish(),
   orderCount: z.number().int().min(0).max(1000).nullish(),
   tips: money.nullish(),
   platform: z.string().trim().max(50).nullish(),
-  note: z.string().trim().max(500).nullish(),
+  note: optionalNote,
 })
   // `amount` is the total received; `tips` is the part of it that was tips.
   .refine((v) => v.tips == null || v.tips <= v.amount, {
     path: ["tips"],
     message: "Tips can't be more than the total amount",
   });
-
-const listQuerySchema = z.object({
-  from: isoDate.optional(),
-  to: isoDate.optional(),
-  limit: z.coerce.number().int().min(1).max(500).default(50),
-});
-
-const idParamSchema = z.object({ id: z.uuid() });
 
 // What the API returns: plain JSON, dates as "YYYY-MM-DD", hours as a number.
 function toJson(entry: IncomeEntry) {

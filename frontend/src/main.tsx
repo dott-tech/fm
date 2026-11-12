@@ -8,6 +8,7 @@ import { AddIncomePage } from './pages/AddIncomePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
+import { WeekPage } from './pages/WeekPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -21,6 +22,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/" element={<DashboardPage />} />
           <Route path="/income/new" element={<AddIncomePage />} />
           <Route path="/expenses/new" element={<AddExpensePage />} />
+          <Route path="/week" element={<WeekPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

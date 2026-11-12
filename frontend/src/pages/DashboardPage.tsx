@@ -95,6 +95,9 @@ export function DashboardPage() {
               {formatMoney(week.grossPerHour ?? 0, currency)}/h before costs).
             </p>
           )}
+          <Link to="/week" className="mt-2 block px-1 py-2 text-sm font-semibold text-emerald-700">
+            Weekly summary & past weeks →
+          </Link>
         </>
       )}
 

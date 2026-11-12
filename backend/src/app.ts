@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { auth } from "./auth.js";
+import { dbErrorResponse } from "./lib/db-errors.js";
 import { expenses } from "./routes/expenses.js";
 import { health } from "./routes/health.js";
 import { income } from "./routes/income.js";
@@ -24,3 +25,14 @@ app.route("/income", income);
 app.route("/expenses", expenses);
 app.route("/summary", summary);
 app.route("/pots", pots);
+
+app.notFound((c) => c.json({ error: "Not found" }, 404));
+
+// Last-resort error handler. Database rule violations become a clean 400/409;
+// anything else is logged and returns a generic 500 (no internals leaked).
+app.onError((err, c) => {
+  const db = dbErrorResponse(err);
+  if (db) return c.json(db.body, db.status);
+  console.error(err);
+  return c.json({ error: "Something went wrong on our side. Try again." }, 500);
+});

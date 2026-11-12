@@ -188,6 +188,13 @@ function PotCard({ pot, currency, onChange }: { pot: Pot; currency: string; onCh
               Pay bill
             </button>
           )}
+          <Link
+            to={`/pots/${pot.id}/edit`}
+            aria-label={`Edit ${pot.name}`}
+            className="grid h-10 w-10 place-items-center rounded-xl text-stone-500 active:bg-stone-100"
+          >
+            ✎
+          </Link>
           <button
             onClick={() => setPanel('delete')}
             aria-label={`Delete ${pot.name}`}

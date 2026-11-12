@@ -66,10 +66,10 @@ const paySchema = z.object({
 
 async function balances(userId: string, potIds: string[], today: string) {
   const [all, todays] = await Promise.all([
-    prisma.potTransfer.groupBy({ by: ["potId"], where: { userId, potId: { in: potIds } }, _sum: { amount: true } }),
+    prisma.potTransfer.groupBy({ by: ["potId"], where: { potId: { in: potIds }, pot: { userId } }, _sum: { amount: true } }),
     prisma.potTransfer.groupBy({
       by: ["potId"],
-      where: { userId, potId: { in: potIds }, date: toDbDate(today), amount: { gt: 0 } }, // money put in today
+      where: { potId: { in: potIds }, pot: { userId }, date: toDbDate(today), amount: { gt: 0 } }, // money put in today
       _sum: { amount: true },
     }),
   ]);
@@ -135,6 +135,16 @@ export const pots = new Hono<AuthEnv>()
     return c.json(await potsOverview(c.get("user").id, c.req.valid("query").date));
   })
 
+  // GET /api/pots/:id?date=2026-11-13 -> one pot with its plan (edit screen)
+  .get("/:id", validate("param", idParamSchema), validate("query", todayQuery), async (c) => {
+    const userId = c.get("user").id;
+    const { date } = c.req.valid("query");
+    const pot = await findOwnPot(userId, c.req.valid("param").id);
+    if (!pot) return c.json({ error: "Not found" }, 404);
+    const b = await balances(userId, [pot.id], date);
+    return c.json(withPlan(pot, b.saved(pot.id), b.putAsideToday(pot.id), date));
+  })
+
   // POST /api/pots -> create a bill or goal
   .post("/", validate("json", createPotSchema), async (c) => {
     const body = c.req.valid("json");
@@ -163,7 +173,7 @@ export const pots = new Hono<AuthEnv>()
     const toMove = overview.pots.filter((p) => p.todayLeft > 0);
 
     await prisma.potTransfer.createMany({
-      data: toMove.map((p) => ({ potId: p.id, userId, date: toDbDate(date), amount: p.todayLeft, note: "Daily set-aside" })),
+      data: toMove.map((p) => ({ potId: p.id, date: toDbDate(date), amount: p.todayLeft, note: "Daily set-aside" })),
     });
     return c.json(await potsOverview(userId, date));
   })
@@ -224,7 +234,7 @@ export const pots = new Hono<AuthEnv>()
         return c.json({ error: "You can't take out more than is in the pot", field: "amount" }, 400);
       }
     }
-    await prisma.potTransfer.create({ data: { potId: pot.id, userId, date: toDbDate(date), amount, note: note || null } });
+    await prisma.potTransfer.create({ data: { potId: pot.id, date: toDbDate(date), amount, note: note || null } });
     return c.json(await potsOverview(userId, date), 201);
   })
 
@@ -252,7 +262,7 @@ export const pots = new Hono<AuthEnv>()
         data: { userId, date: toDbDate(date), amount, category: "bills", note: pot.name },
       }),
       ...(fromPot > 0
-        ? [prisma.potTransfer.create({ data: { potId: pot.id, userId, date: toDbDate(date), amount: -fromPot, note: "Paid bill" } })]
+        ? [prisma.potTransfer.create({ data: { potId: pot.id, date: toDbDate(date), amount: -fromPot, note: "Paid bill" } })]
         : []),
       prisma.pot.update({
         where: { id: pot.id },

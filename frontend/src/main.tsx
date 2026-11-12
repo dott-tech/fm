@@ -7,7 +7,7 @@ import { AddExpensePage } from './pages/AddExpensePage'
 import { AddIncomePage } from './pages/AddIncomePage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
-import { NewPotPage } from './pages/NewPotPage'
+import { PotFormPage } from './pages/PotFormPage'
 import { PotsPage } from './pages/PotsPage'
 import { SignupPage } from './pages/SignupPage'
 import { WeekPage } from './pages/WeekPage'
@@ -26,7 +26,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/expenses/new" element={<AddExpensePage />} />
           <Route path="/week" element={<WeekPage />} />
           <Route path="/pots" element={<PotsPage />} />
-          <Route path="/pots/new" element={<NewPotPage />} />
+          <Route path="/pots/new" element={<PotFormPage />} />
+          <Route path="/pots/:id/edit" element={<PotFormPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

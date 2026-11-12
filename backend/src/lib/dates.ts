@@ -5,7 +5,10 @@ import { z } from "zod";
 // at UTC midnight. These two helpers convert in both directions so no
 // time-zone shift can ever move an entry to another day.
 
-export const isoDate = z.iso.date({ message: "Date must be YYYY-MM-DD" });
+export const isoDate = z.iso
+  .date({ message: "Date must be YYYY-MM-DD" })
+  // Catches year typos like 1026 or 3026; widen if real data ever needs it.
+  .refine((d) => d >= "2000-01-01" && d <= "2100-12-31", "Date is out of range");
 
 export function toDbDate(isoDay: string): Date {
   return new Date(`${isoDay}T00:00:00.000Z`);

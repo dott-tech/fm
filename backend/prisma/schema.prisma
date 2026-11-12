@@ -1,4 +1,10 @@
 // Database schema. Run `npm run db:migrate` after changing it.
+//
+// Business rules are enforced in TWO places: the API (zod, friendly messages)
+// and the database itself (CHECK constraints + a trigger, see the
+// *_db_rules migration). Prisma can't express CHECK constraints, so they live
+// in that migration's SQL; the comments on each model list them.
+//
 // Conventions:
 // - Money is stored as whole numbers (Int) in the user's currency. IQD has no
 //   decimals, so there are no rounding errors.
@@ -69,7 +75,6 @@ model User {
   incomeEntries IncomeEntry[]
   expenses      Expense[]
   pots          Pot[]
-  potTransfers  PotTransfer[]
 
   @@map("users")
 }
@@ -200,19 +205,17 @@ model Pot {
 }
 
 // Money moved into (+) or out of (-) a pot on a given day.
+// Ownership comes from the pot (no user_id copy that could disagree with it).
 model PotTransfer {
   id        String   @id @default(uuid()) @db.Uuid
   potId     String   @map("pot_id") @db.Uuid
-  userId    String   @map("user_id")
   date      DateTime @db.Date
   amount    Int // positive = put aside, negative = taken out / spent
   note      String?  @db.VarChar(200)
   createdAt DateTime @default(now()) @map("created_at")
 
-  pot  Pot  @relation(fields: [potId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pot Pot @relation(fields: [potId], references: [id], onDelete: Cascade)
 
-  @@index([potId])
-  @@index([userId, date])
+  @@index([potId, date])
   @@map("pot_transfers")
 }

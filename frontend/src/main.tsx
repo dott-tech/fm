@@ -5,7 +5,7 @@ import { GuestOnly, RequireAuth } from './components/RequireAuth'
 import './index.css'
 import { AddExpensePage } from './pages/AddExpensePage'
 import { AddIncomePage } from './pages/AddIncomePage'
-import { HomePage } from './pages/HomePage'
+import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 
@@ -18,7 +18,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/signup" element={<SignupPage />} />
         </Route>
         <Route element={<RequireAuth />}>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<DashboardPage />} />
           <Route path="/income/new" element={<AddIncomePage />} />
           <Route path="/expenses/new" element={<AddExpensePage />} />
         </Route>

@@ -37,15 +37,17 @@ export const auth = betterAuth({
       weeklyTarget: {
         type: "number",
         required: false,
-        input: true,
+        input: false, // set through PATCH /api/me, which validates it
       },
     },
   },
   hooks: {
     // Reject an invalid role with a clear 400 before it ever reaches the database.
+    // Applies to sign-up and to Better Auth's own /update-user endpoint.
     before: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== "/sign-up/email") return;
+      if (ctx.path !== "/sign-up/email" && ctx.path !== "/update-user") return;
       const role: unknown = ctx.body?.role;
+      if (ctx.path === "/update-user" && role === undefined) return; // not changing role
       if (!ROLES.includes(role as (typeof ROLES)[number])) {
         throw new APIError("BAD_REQUEST", {
           message: "Role must be cab_driver or delivery_rider",

@@ -64,3 +64,24 @@ export type Expense = {
 export type NewExpense = Omit<Expense, 'id' | 'createdAt'>
 
 export type ExpenseDefaults = { category: ExpenseCategory }
+
+// GET /api/summary/week?date=YYYY-MM-DD
+export type WeekSummary = {
+  weekStart: string // Saturday
+  weekEnd: string // Friday
+  currency: string
+  income: number
+  tips: number
+  expenses: number
+  net: number // income - expenses: what's left
+  target: number | null
+  remainingToTarget: number | null
+  targetHit: boolean | null
+  incomeEntries: number
+  orderCount: number
+  hours: number
+  grossPerHour: number | null
+  netPerHour: number | null
+  expensesByCategory: { category: ExpenseCategory; amount: number }[]
+  days: { date: string; income: number; expenses: number }[]
+}

@@ -14,3 +14,18 @@ export function toDbDate(isoDay: string): Date {
 export function fromDbDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
+
+export function addDays(isoDay: string, days: number): string {
+  const d = toDbDate(isoDay);
+  d.setUTCDate(d.getUTCDate() + days);
+  return fromDbDate(d);
+}
+
+// Work weeks run Saturday -> Friday (the common week in Iraq, Friday off).
+// Returns the Saturday and Friday of the week that contains `isoDay`.
+export function weekContaining(isoDay: string): { start: string; end: string } {
+  const dayOfWeek = toDbDate(isoDay).getUTCDay(); // 0 = Sunday ... 6 = Saturday
+  const daysSinceSaturday = (dayOfWeek + 1) % 7; // Saturday -> 0, Friday -> 6
+  const start = addDays(isoDay, -daysSinceSaturday);
+  return { start, end: addDays(start, 6) };
+}

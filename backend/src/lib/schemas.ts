@@ -4,7 +4,11 @@ import { isoDate } from "./dates.js";
 // Validation rules shared by the income and expense routes.
 
 // Money is whole IQD. The upper bound just catches typos (an extra few zeros).
-export const money = z.number().int("Must be a whole number").min(0).max(100_000_000);
+export const money = z
+  .number("Must be a number")
+  .int("Must be a whole number")
+  .min(0, "Can't be negative")
+  .max(100_000_000, "That amount looks too large");
 
 export const positiveAmount = money.min(1, "Amount must be at least 1");
 

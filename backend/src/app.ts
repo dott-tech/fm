@@ -5,6 +5,7 @@ import { expenses } from "./routes/expenses.js";
 import { health } from "./routes/health.js";
 import { income } from "./routes/income.js";
 import { me } from "./routes/me.js";
+import { summary } from "./routes/summary.js";
 
 // The app is defined separately from how it's started (index.ts), so the
 // same app can later run on Vercel functions without changes.
@@ -20,3 +21,4 @@ app.route("/health", health);
 app.route("/me", me);
 app.route("/income", income);
 app.route("/expenses", expenses);
+app.route("/summary", summary);

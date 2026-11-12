@@ -14,11 +14,13 @@
   "type": "module",
   "dependencies": {
     "@hono/node-server": "^2.1.8",
+    "@hono/zod-validator": "^0.9.1",
     "@prisma/adapter-neon": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "better-auth": "^1.7.22",
     "dotenv": "^18.0.10",
-    "hono": "^4.13.18"
+    "hono": "^4.13.18",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

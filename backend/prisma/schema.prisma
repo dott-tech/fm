@@ -66,7 +66,7 @@ model IncomeEntry {
   amount     Int
   hours      Decimal?     @db.Decimal(4, 2) // e.g. 7.50 hours
   orderCount Int?         @map("order_count")
-  tips       Int?
+  tips       Int? // part of `amount` that was tips (amount is the total)
   platform   String?      @db.VarChar(50) // free text: Toters, Talabat, direct...
   source     IncomeSource
   note       String?

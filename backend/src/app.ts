@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { auth } from "./auth.js";
 import { health } from "./routes/health.js";
+import { income } from "./routes/income.js";
 import { me } from "./routes/me.js";
 
 // The app is defined separately from how it's started (index.ts), so the
@@ -16,3 +17,4 @@ app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
 
 app.route("/health", health);
 app.route("/me", me);
+app.route("/income", income);

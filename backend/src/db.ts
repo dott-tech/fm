@@ -18,11 +18,16 @@ function createClient() {
 // Cloudflare Workers don't allow a connection opened during one request to be
 // used by another, so there each request gets its own client (worker.ts calls
 // withRequestDb). In Node (local dev) one shared client is created on first use.
-const requestClient = new AsyncLocalStorage<PrismaClient>();
+// The per-request client is only created when the request first uses the
+// database, so requests that don't need it (health check) never open one.
+type RequestSlot = { client?: PrismaClient };
+const requestSlot = new AsyncLocalStorage<RequestSlot>();
 let sharedClient: PrismaClient | undefined;
 
 function currentClient(): PrismaClient {
-  return requestClient.getStore() ?? (sharedClient ??= createClient());
+  const slot = requestSlot.getStore();
+  if (slot) return (slot.client ??= createClient());
+  return (sharedClient ??= createClient());
 }
 
 // Use `prisma` anywhere as a normal client; it points at the right one.
@@ -34,13 +39,14 @@ export const prisma = new Proxy({} as PrismaClient, {
   },
 });
 
-// Runs `handle` with a fresh client, then closes it once the response is
-// sent (`waitUntil` keeps the Worker alive just long enough for that).
+// Runs `handle` with its own client slot, then closes the client (if one was
+// opened) once the response is sent (`waitUntil` keeps the Worker alive just
+// long enough for that).
 export async function withRequestDb<T>(handle: () => Promise<T>, waitUntil: (p: Promise<unknown>) => void): Promise<T> {
-  const client = createClient();
+  const slot: RequestSlot = {};
   try {
-    return await requestClient.run(client, handle);
+    return await requestSlot.run(slot, handle);
   } finally {
-    waitUntil(client.$disconnect());
+    if (slot.client) waitUntil(slot.client.$disconnect());
   }
 }

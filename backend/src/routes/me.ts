@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { prisma } from "../db.js";
+import { ROLES } from "../auth.js";
 import { money } from "../lib/schemas.js";
 import { validate } from "../lib/validate.js";
 import { requireAuth, type AuthEnv } from "../middleware/require-auth.js";
@@ -8,6 +9,7 @@ import { requireAuth, type AuthEnv } from "../middleware/require-auth.js";
 // Settings the user can change. Send only what changes.
 const updateMeSchema = z
   .object({
+    role: z.enum(ROLES, "Role must be cab_driver or delivery_rider"),
     // Weekly goal after costs. null removes the target.
     weeklyTarget: money.nullable(),
     // Regular days off as weekday numbers (0 = Sunday ... 5 = Friday).
@@ -23,6 +25,7 @@ const profileSelect = {
   id: true,
   name: true,
   email: true,
+  isAnonymous: true,
   role: true,
   currency: true,
   weeklyTarget: true,
@@ -40,10 +43,11 @@ export const me = new Hono<AuthEnv>()
 
   // PATCH /api/me { "weeklyTarget": 500000, "daysOff": [5] } -> update settings.
   .patch("/", validate("json", updateMeSchema), async (c) => {
-    const { weeklyTarget, daysOff } = c.req.valid("json");
+    const { role, weeklyTarget, daysOff } = c.req.valid("json");
     const user = await prisma.user.update({
       where: { id: c.get("user").id },
       data: {
+        ...(role !== undefined && { role }),
         ...(weeklyTarget !== undefined && { weeklyTarget }),
         ...(daysOff !== undefined && { daysOff: [...daysOff].sort() }),
       },

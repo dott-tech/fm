@@ -1,4 +1,4 @@
-import { inferAdditionalFields } from 'better-auth/client/plugins'
+import { anonymousClient, inferAdditionalFields } from 'better-auth/client/plugins'
 import { createAuthClient } from 'better-auth/react'
 
 // Talks to the backend's /api/auth/* endpoints. Same origin as the page
@@ -12,8 +12,11 @@ export const authClient = createAuthClient({
         role: { type: ['cab_driver', 'delivery_rider'], required: true },
         currency: { type: 'string', required: false },
         weeklyTarget: { type: 'number', required: false },
+        isAnonymous: { type: 'boolean', required: false },
       },
     }),
+    // Guest mode: authClient.signIn.anonymous() starts a session without an account.
+    anonymousClient(),
   ],
 })
 

@@ -1,16 +1,18 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { PageHeader } from '../components/AppShell'
 import { parseAmount } from '../components/AmountInput'
 import { ChoiceButton, ErrorMessage, Flash, PrimaryButton, Rise, Skeleton } from '../components/ui'
 import { fmt, useI18n, type Locale } from '../i18n'
-import { authClient } from '../lib/auth-client'
+import { authClient, type Role } from '../lib/auth-client'
 import { currencyLabel, formatNumber } from '../lib/format'
+import { promptInstall, useInstallState } from '../lib/install'
 import { WEEK_ORDER } from '../lib/labels'
 import { queryClient, useProfile, useUpdateProfile } from '../lib/queries'
 import { setThemePref, useThemePref, type ThemePref } from '../lib/theme'
 
 const THEMES: ThemePref[] = ['system', 'light', 'dark']
+const ROLES: Role[] = ['cab_driver', 'delivery_rider']
 const LOCALES: { value: Locale; label: string }[] = [
   { value: 'en', label: 'English' },
   { value: 'ar', label: 'العربية' },
@@ -26,6 +28,9 @@ export function SettingsPage() {
   const [daysOff, setDaysOff] = useState<number[]>([])
   const [loadedFrom, setLoadedFrom] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const install = useInstallState()
+  // Role saves on tap (its own mutation, so it doesn't show the form's "Saved").
+  const updateRole = useUpdateProfile()
 
   // Fill the form from the saved profile (once per load).
   const p = profile.data
@@ -50,7 +55,14 @@ export function SettingsPage() {
   }
 
   async function handleLogout() {
-    await authClient.signOut()
+    if (p?.isAnonymous) {
+      if (!window.confirm(m.guest.leaveConfirm)) return
+      // Delete the guest user and their data; fall back to a plain sign-out.
+      const { error } = await authClient.deleteAnonymousUser()
+      if (error) await authClient.signOut()
+    } else {
+      await authClient.signOut()
+    }
     // Forget the previous user's cached data (shared phones).
     queryClient.clear()
     navigate('/login', { replace: true, viewTransition: true })
@@ -70,6 +82,19 @@ export function SettingsPage() {
         )
       ) : (
         <Rise i={0}>
+          {p.isAnonymous ? (
+            <section className="mb-6 rounded-2xl bg-surface p-4 shadow-sm">
+              <p className="text-lg font-semibold">{m.guest.banner}</p>
+              <p className="mt-1 mb-4 text-sm text-muted">{m.guest.settingsNote}</p>
+              <Link
+                to="/signup"
+                viewTransition
+                className="flex h-12 w-full items-center justify-center rounded-xl bg-accent font-semibold text-white active:bg-accent-pressed"
+              >
+                {m.guest.keepData}
+              </Link>
+            </section>
+          ) : (
           <section className="mb-6 rounded-2xl bg-surface p-4 shadow-sm">
             <p className="text-lg font-semibold">{p.name}</p>
             <p dir="ltr" className="text-sm text-muted rtl:text-right">
@@ -79,12 +104,53 @@ export function SettingsPage() {
               {m.roles[p.role].label} · {currencyLabel(p.currency)}
             </p>
           </section>
+          )}
         </Rise>
       )}
 
-      {/* Device preferences: apply instantly, no Save needed. */}
+      {/* Get the app (PWA install). */}
       <Rise i={1}>
+        <section className="mb-6 rounded-2xl bg-surface p-4 shadow-sm">
+          <p className="font-semibold">{m.settings.getApp}</p>
+          {install === 'installed' ? (
+            <p className="mt-1 text-sm text-good-ink">{m.settings.installed}</p>
+          ) : (
+            <>
+              <p className="mt-1 mb-3 text-sm text-muted">{m.settings.getAppHint}</p>
+              {install === 'available' && (
+                <PrimaryButton type="button" onClick={() => void promptInstall()}>
+                  ⤓ {m.settings.install}
+                </PrimaryButton>
+              )}
+              {install === 'ios' && <p className="rounded-xl bg-surface-2 p-3 text-sm text-ink-2">{m.settings.iosSteps}</p>}
+              {install === 'unsupported' && (
+                <p className="rounded-xl bg-surface-2 p-3 text-sm text-ink-2">{m.settings.unsupported}</p>
+              )}
+            </>
+          )}
+        </section>
+      </Rise>
+
+      {/* Device preferences: apply instantly, no Save needed. */}
+      <Rise i={2}>
         <section className="mb-6 space-y-4 rounded-2xl bg-surface p-4 shadow-sm">
+          {p && (
+            <fieldset>
+              <legend className="mb-2 font-semibold">{m.settings.iWorkAs}</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {ROLES.map((r) => (
+                  <ChoiceButton
+                    key={r}
+                    selected={(updateRole.variables?.role ?? p.role) === r}
+                    onClick={() => r !== p.role && updateRole.mutate({ role: r })}
+                  >
+                    {m.roles[r].label}
+                  </ChoiceButton>
+                ))}
+              </div>
+              <ErrorMessage message={updateRole.error?.message ?? null} />
+            </fieldset>
+          )}
           <fieldset>
             <legend className="mb-2 font-semibold">{m.settings.appearance}</legend>
             <div className="grid grid-cols-3 gap-2">
@@ -108,7 +174,7 @@ export function SettingsPage() {
         </section>
       </Rise>
 
-      <Rise i={2}>
+      <Rise i={3}>
         <form onSubmit={handleSubmit} className="space-y-6">
           <section className="rounded-2xl bg-surface p-4 shadow-sm">
             <label htmlFor="weekly-target" className="block font-semibold">
@@ -168,7 +234,7 @@ export function SettingsPage() {
       </Rise>
 
       <button onClick={handleLogout} className="mt-8 mb-4 h-12 w-full rounded-xl border border-line-strong font-semibold text-ink-2">
-        {m.settings.logOut}
+        {p?.isAnonymous ? m.guest.leave : m.settings.logOut}
       </button>
     </main>
   )

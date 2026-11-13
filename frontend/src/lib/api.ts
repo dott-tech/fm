@@ -82,6 +82,7 @@ export type Profile = {
   id: string
   name: string
   email: string
+  isAnonymous: boolean | null // true = guest (no account yet)
   role: 'cab_driver' | 'delivery_rider'
   currency: string
   weeklyTarget: number | null

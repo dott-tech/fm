@@ -100,12 +100,17 @@ export const income = new Hono<AuthEnv>()
   // GET /api/income/defaults -> pre-fill values for the add-income form:
   // the source and platform of the last entry, or a guess from the user's role.
   .get("/defaults", async (c) => {
-    const user = c.get("user");
-    const last = await prisma.incomeEntry.findFirst({
-      where: { userId: user.id },
-      orderBy: { createdAt: "desc" },
-      select: { source: true, platform: true },
-    });
+    const userId = c.get("user").id;
+    // Role is read from the database: it can change in settings, and the
+    // session cookie's copy may be up to 5 minutes old.
+    const [user, last] = await Promise.all([
+      prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { role: true } }),
+      prisma.incomeEntry.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        select: { source: true, platform: true },
+      }),
+    ]);
     const fallbackSource = user.role === "delivery_rider" ? "delivery" : "cab";
     return c.json({
       source: last?.source ?? fallbackSource,

@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useI18n } from '../i18n'
+import { authClient } from '../lib/auth-client'
 import { prefetchTabs } from '../lib/queries'
 
 // Frame for the main tabs: page content + a bottom navigation bar under the
@@ -35,6 +36,7 @@ function useWarmUpTabs() {
 export function AppShell() {
   const { m } = useI18n()
   const { pathname } = useLocation()
+  const { data: session } = authClient.useSession()
   useWarmUpTabs()
   const activeIndex = Math.max(
     0,
@@ -44,6 +46,17 @@ export function AppShell() {
   return (
     <>
       <div className="pb-24">
+        {session?.user.isAnonymous && (
+          // Guests: a slim reminder that their data isn't tied to an account yet.
+          <div className="bg-info-soft text-info-ink">
+            <p className="mx-auto flex max-w-md flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 py-2 text-sm">
+              <span>{m.guest.banner}</span>
+              <Link to="/signup" viewTransition className="font-semibold underline underline-offset-2">
+                {m.guest.keepData}
+              </Link>
+            </p>
+          </div>
+        )}
         <Outlet />
       </div>
       <nav

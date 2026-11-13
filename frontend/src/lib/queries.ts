@@ -134,12 +134,13 @@ export function useDeleteEntry() {
 export function useUpdateProfile() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (changes: { weeklyTarget?: number | null; daysOff?: number[] }) =>
+    mutationFn: (changes: { role?: Profile['role']; weeklyTarget?: number | null; daysOff?: number[] }) =>
       api<Profile>('/me', { method: 'PATCH', body: changes }),
     onSuccess: (profile) => {
       client.setQueryData(keys.profile, profile)
-      // target affects the week; days off affect every daily amount
-      return invalidate(...MONEY, 'pots', 'pot')
+      // target affects the week; days off affect every daily amount;
+      // role changes the add-income form's default source
+      return invalidate(...MONEY, 'pots', 'pot', keys.incomeDefaults[0])
     },
   })
 }

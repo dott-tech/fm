@@ -79,6 +79,21 @@ export const en = {
     signupFailed: 'Could not create your account. Try again.',
   },
 
+  guest: {
+    name: 'Guest',
+    tryIt: 'Try it without an account',
+    tryHint: 'Nothing to fill in. Create an account later to keep your data.',
+    starting: 'Starting…',
+    startFailed: 'Could not start guest mode. Try again.',
+    loginDiscards: "You're in guest mode. Logging in to an existing account leaves this guest data behind. To keep it, create a new account instead.",
+    signupKeeps: 'Everything you added as a guest moves to your new account.',
+    banner: "You're trying the app as a guest.",
+    keepData: 'Create an account to keep your data',
+    settingsNote: 'Your data is kept only while you stay in guest mode on this device. Create an account to keep it safe and use it on any phone.',
+    leave: 'Leave guest mode',
+    leaveConfirm: 'Leave guest mode? Everything you added as a guest will be deleted.',
+  },
+
   dashboard: {
     title: 'This week',
     hi: 'Hi {name}',
@@ -294,6 +309,13 @@ export const en = {
     appearance: 'Appearance',
     themes: { system: 'System', light: 'Light', dark: 'Dark' },
     language: 'Language',
+    iWorkAs: 'I work as a',
+    getApp: 'Get the app',
+    getAppHint: 'Install it on your phone: opens from the home screen, full screen, and loads instantly.',
+    install: 'Download the app',
+    installed: '✓ The app is installed on this device.',
+    iosSteps: 'On iPhone: tap the Share button in Safari, then “Add to Home Screen”.',
+    unsupported: 'Open this page in Chrome (Android) or Safari (iPhone), then install it from the browser menu: “Install app” or “Add to Home Screen”.',
   },
 }
 

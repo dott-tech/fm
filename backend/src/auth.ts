@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { anonymous } from "better-auth/plugins";
 import { prisma } from "./db.js";
 
 const frontendUrl = process.env["FRONTEND_URL"];
@@ -32,6 +33,7 @@ export const auth = betterAuth({
       role: {
         type: [...ROLES],
         required: true,
+        defaultValue: "cab_driver", // guests start as cab drivers (changeable in settings)
         input: true, // chosen at sign-up
       },
       currency: {
@@ -61,6 +63,35 @@ export const auth = betterAuth({
       }
     }),
   },
+  plugins: [
+    // Guest mode: "Try without an account" creates a real (anonymous) user
+    // with a session, so every screen works unchanged. If the guest later
+    // creates an account, their data moves to it; the guest user is then
+    // deleted by the plugin. Logging in to an EXISTING account from guest
+    // mode discards the guest's data (no merging into an existing account).
+    anonymous({
+      generateName: () => "Guest",
+      onLinkAccount: async ({ anonymousUser, newUser, ctx }) => {
+        if (ctx.path !== "/sign-up/email") return;
+        const from = anonymousUser.user.id;
+        const to = newUser.user.id;
+        const guest = await prisma.user.findUnique({
+          where: { id: from },
+          select: { weeklyTarget: true, daysOff: true },
+        });
+        await prisma.$transaction([
+          prisma.incomeEntry.updateMany({ where: { userId: from }, data: { userId: to } }),
+          prisma.expense.updateMany({ where: { userId: from }, data: { userId: to } }),
+          prisma.pot.updateMany({ where: { userId: from }, data: { userId: to } }),
+          prisma.daySkip.updateMany({ where: { userId: from }, data: { userId: to } }),
+          prisma.user.update({
+            where: { id: to },
+            data: { weeklyTarget: guest?.weeklyTarget ?? null, daysOff: guest?.daysOff ?? [] },
+          }),
+        ]);
+      },
+    }),
+  ],
   // Only accept auth requests coming from our own frontend (CSRF protection).
   trustedOrigins: frontendUrl ? [frontendUrl] : [],
   telemetry: { enabled: false },

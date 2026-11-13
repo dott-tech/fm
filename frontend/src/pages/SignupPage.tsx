@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { AuthLayout, ChoiceButton, ErrorMessage, Field, PrimaryButton } from '../components/ui'
 import { translateServerError, useI18n } from '../i18n'
 import { authClient, type Role } from '../lib/auth-client'
+import { queryClient } from '../lib/queries'
 
 const ROLES: Role[] = ['cab_driver', 'delivery_rider']
 
@@ -12,6 +13,8 @@ export function SignupPage() {
   const [role, setRole] = useState<Role>('cab_driver')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const { data: session } = authClient.useSession()
+  const isGuest = Boolean(session?.user.isAnonymous)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -31,12 +34,14 @@ export function SignupPage() {
       setError(error.message ? translateServerError(error.message) : m.auth.signupFailed)
       return
     }
-    // Better Auth logs the user in right after sign-up.
+    // Better Auth logs the user in right after sign-up. A guest's data has
+    // moved to the new account, so drop the cached guest copies.
+    queryClient.clear()
     navigate('/', { replace: true, viewTransition: true })
   }
 
   return (
-    <AuthLayout title={m.auth.signupTitle} subtitle={m.auth.signupSubtitle}>
+    <AuthLayout title={m.auth.signupTitle} subtitle={isGuest ? m.guest.signupKeeps : m.auth.signupSubtitle}>
       <form onSubmit={handleSubmit} className="space-y-5">
         <fieldset>
           <legend className="mb-1.5 text-sm font-medium text-ink-2">{m.auth.iWorkAs}</legend>

@@ -30,7 +30,7 @@ export function DashboardPage() {
 
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-6">
-      <PageHeader title={m.dashboard.title} subtitle={session ? fmt(m.dashboard.hi, { name: session.user.name }) : undefined} />
+      <PageHeader title={m.dashboard.title} subtitle={session ? fmt(m.dashboard.hi, { name: session.user.isAnonymous ? m.guest.name : session.user.name }) : undefined} />
 
       {flash && (
         <div className="mb-4">

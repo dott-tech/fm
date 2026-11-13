@@ -23,10 +23,11 @@ export function RequireAuth() {
 }
 
 // The opposite: login/sign-up pages send logged-in users to the app.
+// Guests stay allowed, so they can create an account or log in.
 export function GuestOnly() {
   const { data: session, isPending } = authClient.useSession()
 
   if (isPending) return null
-  if (session) return <Navigate to="/" replace />
+  if (session && !session.user.isAnonymous) return <Navigate to="/" replace />
   return <Outlet />
 }

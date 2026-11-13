@@ -18,6 +18,10 @@ Tick items off as they're done.
 - [ ] **Email verification.** Needs an email provider (e.g. Resend). Turn on
       `requireEmailVerification`. Alternative: phone number + SMS code.
 - [ ] **Forgot password.** Same provider; implement `sendResetPassword`.
+- [ ] **Guest mode abuse / cleanup.** Every "Try without an account" tap
+      creates a user row. Rate-limit `/sign-in/anonymous` and add a scheduled
+      job that deletes guest users (`is_anonymous = true`) inactive for 30+
+      days (their data cascades).
 - [ ] **Account enumeration on sign-up** (optional). Goes away once
       email verification is required.
 

@@ -9,6 +9,20 @@
     <meta name="theme-color" content="#047857" />
     <meta name="description" content="Track what you really earn after fuel and repairs." />
     <title>Driver Finance</title>
+    <!-- Apply saved theme and language before the first paint (no flash of
+         the wrong colours or text direction). Mirrors lib/theme.ts and i18n. -->
+    <script>
+      try {
+        var t = localStorage.getItem('theme')
+        if (t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        }
+        if (localStorage.getItem('locale') === 'ar') {
+          document.documentElement.lang = 'ar'
+          document.documentElement.dir = 'rtl'
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -3,95 +3,80 @@ import { useNavigate } from 'react-router'
 import { AmountInput } from '../components/AmountInput'
 import { DayPicker } from '../components/DayPicker'
 import { EntryScreen } from '../components/EntryScreen'
-import { ErrorMessage, Field } from '../components/ui'
-import { api, type Expense, type ExpenseCategory, type ExpenseDefaults, type NewExpense } from '../lib/api'
+import { ChoiceButton, ErrorMessage, Field } from '../components/ui'
+import { fmt, useI18n } from '../i18n'
+import type { ExpenseCategory } from '../lib/api'
 import { authClient } from '../lib/auth-client'
 import { formatMoney, localIsoDate } from '../lib/format'
-import { EXPENSE_CATEGORIES, expenseLabel } from '../lib/labels'
+import { EXPENSE_CATEGORIES } from '../lib/labels'
+import { useCreateExpense, useExpenseDefaults } from '../lib/queries'
 
 export function AddExpensePage() {
+  const { m } = useI18n()
   const navigate = useNavigate()
   const { data: session } = authClient.useSession()
   const currency = session?.user.currency ?? 'IQD'
+  const defaults = useExpenseDefaults()
+  const create = useCreateExpense()
 
   const [amount, setAmount] = useState(0)
   const [date, setDate] = useState(localIsoDate())
   const [category, setCategory] = useState<ExpenseCategory | null>(null)
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
 
   // Pre-select the category used last time (fuel for a new user).
   useEffect(() => {
-    let cancelled = false
-    api<ExpenseDefaults>('/expenses/defaults')
-      .then((defaults) => {
-        if (!cancelled) setCategory((current) => current ?? defaults.category)
-      })
-      .catch(() => {
-        if (!cancelled) setCategory((current) => current ?? 'fuel')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+    if (defaults.data) setCategory((current) => current ?? defaults.data.category)
+    else if (defaults.error) setCategory((current) => current ?? 'fuel')
+  }, [defaults.data, defaults.error])
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (amount <= 0) {
-      setError('Enter how much you spent.')
-      return
-    }
+    if (amount <= 0) return setError(m.expense.enterAmount)
     if (!category) return
-
-    const expense: NewExpense = { date, amount, category, note: note.trim() || null }
-
-    setSaving(true)
     setError(null)
-    try {
-      const saved = await api<Expense>('/expenses', { method: 'POST', body: expense })
-      const what = expenseLabel(saved.category).toLowerCase()
-      navigate('/', { replace: true, state: { flash: `Saved ${formatMoney(saved.amount, currency)} for ${what}` } })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not save. Try again.')
-      setSaving(false)
-    }
+    create.mutate(
+      { date, amount, category, note: note.trim() || null },
+      {
+        onSuccess: (saved) =>
+          navigate('/', {
+            replace: true,
+            viewTransition: true,
+            state: { flash: fmt(m.dashboard.savedExpense, { amount: formatMoney(saved.amount, currency), what: m.costs[saved.category] }) },
+          }),
+      },
+    )
   }
 
   return (
     <EntryScreen
-      title="Add expense"
+      title={m.expense.title}
       formId="expense-form"
-      saving={saving}
+      saving={create.isPending}
       canSave={category !== null}
-      saveLabel={amount > 0 ? `Save ${formatMoney(amount, currency)}` : 'Save'}
+      saveLabel={amount > 0 ? fmt(m.income.saveAmount, { amount: formatMoney(amount, currency) }) : m.common.save}
     >
       <form id="expense-form" onSubmit={handleSubmit} className="space-y-6">
-        <AmountInput label="How much did you spend?" value={amount} onChange={setAmount} currency={currency} />
+        <AmountInput label={m.expense.howMuch} value={amount} onChange={setAmount} currency={currency} />
 
         {/* Big icon buttons: recognisable at a glance, one tap to pick. */}
         <fieldset>
-          <legend className="mb-1.5 text-sm font-medium text-stone-700">On what</legend>
+          <legend className="mb-1.5 text-sm font-medium text-ink-2">{m.expense.onWhat}</legend>
           <div className="grid grid-cols-3 gap-2">
-            {EXPENSE_CATEGORIES.filter((c) => c.pickable).map((option) => {
-              const selected = option.value === category
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setCategory(option.value)}
-                  className={`flex h-20 flex-col items-center justify-center gap-1 rounded-xl border-2 text-sm font-semibold ${
-                    selected ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-stone-200 bg-white text-stone-700'
-                  }`}
-                >
-                  <span aria-hidden className="text-2xl leading-none">
-                    {option.icon}
-                  </span>
-                  {option.label}
-                </button>
-              )
-            })}
+            {EXPENSE_CATEGORIES.filter((c) => c.pickable).map((option) => (
+              <ChoiceButton
+                key={option.value}
+                selected={option.value === category}
+                onClick={() => setCategory(option.value)}
+                className="flex h-20 flex-col items-center justify-center gap-1 rounded-xl"
+              >
+                <span aria-hidden className="text-2xl leading-none">
+                  {option.icon}
+                </span>
+                {m.costs[option.value]}
+              </ChoiceButton>
+            ))}
           </div>
         </fieldset>
 
@@ -99,14 +84,14 @@ export function AddExpensePage() {
 
         <Field
           id="note"
-          label="Note (optional)"
-          placeholder="e.g. new brake pads"
+          label={m.common.noteOptional}
+          placeholder={m.expense.notePlaceholder}
           value={note}
           maxLength={500}
           onChange={(e) => setNote(e.target.value)}
         />
 
-        <ErrorMessage message={error} />
+        <ErrorMessage message={error ?? create.error?.message ?? null} />
       </form>
     </EntryScreen>
   )

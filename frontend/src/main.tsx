@@ -1,43 +1,52 @@
-import { StrictMode } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { StrictMode, type ComponentType } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import { AppShell } from './components/AppShell'
 import { GuestOnly, RequireAuth } from './components/RequireAuth'
 import './index.css'
-import { AddExpensePage } from './pages/AddExpensePage'
-import { AddIncomePage } from './pages/AddIncomePage'
-import { DashboardPage } from './pages/DashboardPage'
-import { LoginPage } from './pages/LoginPage'
-import { PotFormPage } from './pages/PotFormPage'
-import { PotsPage } from './pages/PotsPage'
-import { SettingsPage } from './pages/SettingsPage'
-import { SignupPage } from './pages/SignupPage'
-import { WeekPage } from './pages/WeekPage'
+import './lib/theme' // applies the saved theme and follows the system setting
+import { queryClient } from './lib/queries'
+
+// Each screen is loaded on demand (code splitting): the first download only
+// contains what the first screen needs; other screens arrive when opened.
+const page = (load: () => Promise<{ Component: ComponentType }>) => ({ lazy: load })
+
+const router = createBrowserRouter([
+  {
+    Component: GuestOnly,
+    children: [
+      { path: '/login', ...page(() => import('./pages/LoginPage').then((m) => ({ Component: m.LoginPage }))) },
+      { path: '/signup', ...page(() => import('./pages/SignupPage').then((m) => ({ Component: m.SignupPage }))) },
+    ],
+  },
+  {
+    Component: RequireAuth,
+    children: [
+      {
+        // Main tabs, with the bottom navigation bar
+        Component: AppShell,
+        children: [
+          { path: '/', ...page(() => import('./pages/DashboardPage').then((m) => ({ Component: m.DashboardPage }))) },
+          { path: '/week', ...page(() => import('./pages/WeekPage').then((m) => ({ Component: m.WeekPage }))) },
+          { path: '/pots', ...page(() => import('./pages/PotsPage').then((m) => ({ Component: m.PotsPage }))) },
+          { path: '/settings', ...page(() => import('./pages/SettingsPage').then((m) => ({ Component: m.SettingsPage }))) },
+        ],
+      },
+      // Entry screens: full screen with their own Save button
+      { path: '/income/new', ...page(() => import('./pages/AddIncomePage').then((m) => ({ Component: m.AddIncomePage }))) },
+      { path: '/expenses/new', ...page(() => import('./pages/AddExpensePage').then((m) => ({ Component: m.AddExpensePage }))) },
+      { path: '/pots/new', ...page(() => import('./pages/PotFormPage').then((m) => ({ Component: m.PotFormPage }))) },
+      { path: '/pots/:id/edit', ...page(() => import('./pages/PotFormPage').then((m) => ({ Component: m.PotFormPage }))) },
+    ],
+  },
+  { path: '*', element: <Navigate to="/" replace /> },
+])
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route element={<GuestOnly />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-        </Route>
-        <Route element={<RequireAuth />}>
-          {/* Main tabs, with the bottom navigation bar */}
-          <Route element={<AppShell />}>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/week" element={<WeekPage />} />
-            <Route path="/pots" element={<PotsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-          </Route>
-          {/* Entry screens: full screen with their own Save button */}
-          <Route path="/income/new" element={<AddIncomePage />} />
-          <Route path="/expenses/new" element={<AddExpensePage />} />
-          <Route path="/pots/new" element={<PotFormPage />} />
-          <Route path="/pots/:id/edit" element={<PotFormPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
   </StrictMode>,
 )

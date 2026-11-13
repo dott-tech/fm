@@ -16,7 +16,7 @@ const createExpenseSchema = z.object({
   note: optionalNote,
 });
 
-function toJson(expense: Expense) {
+export function toExpenseJson(expense: Expense) {
   return {
     id: expense.id,
     date: fromDbDate(expense.date),
@@ -45,7 +45,7 @@ export const expenses = new Hono<AuthEnv>()
         note: body.note || null,
       },
     });
-    return c.json(toJson(expense), 201);
+    return c.json(toExpenseJson(expense), 201);
   })
 
   // GET /api/expenses?from=2026-11-08&to=2026-11-14 -> expenses, newest first
@@ -64,7 +64,7 @@ export const expenses = new Hono<AuthEnv>()
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       take: limit,
     });
-    return c.json(rows.map(toJson));
+    return c.json(rows.map(toExpenseJson));
   })
 
   // GET /api/expenses/defaults -> the category used last (fuel for new users,

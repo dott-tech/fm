@@ -1,11 +1,253 @@
 @import "tailwindcss";
 
-/* App-wide defaults. Big, readable text: this is used one-handed, often in a car. */
+/* =====================================================================
+   Colour roles (design tokens)
+   Screens use roles like bg-surface / text-muted, never raw colours, so
+   light and dark mode are just two sets of values below.
+   ===================================================================== */
+
+:root {
+  color-scheme: light;
+  --canvas: #fafaf9; /* page background */
+  --surface: #ffffff; /* cards */
+  --surface-2: #f5f5f4; /* chips, quiet buttons */
+  --surface-3: #e7e5e4; /* pressed / skeleton */
+  --ink: #1c1917; /* main text */
+  --ink-2: #44403c; /* secondary text */
+  --muted: #78716c; /* labels, hints */
+  --faint: #a8a29e; /* empty values, icons */
+  --line: #e7e5e4;
+  --line-strong: #d6d3d1;
+
+  --accent: #047857; /* primary buttons (white text) */
+  --accent-pressed: #065f46;
+  --accent-ink: #047857; /* links and accent text */
+  --dark-button: #292524; /* "− Expense" button */
+
+  --hero: #065f46; /* big card, good week */
+  --hero-loss: #991b1b; /* big card, losing week */
+
+  --good-soft: #ecfdf5;
+  --good-ink: #065f46;
+  --good-track: #d1fae5;
+  --good-bar: #059669;
+  --bad-soft: #fef2f2;
+  --bad-ink: #b91c1c;
+  --bad-button: #b91c1c;
+  --warn-soft: #fffbeb;
+  --warn-line: #fde68a;
+  --warn-ink: #78350f;
+  --info-soft: #f0f9ff;
+  --info-ink: #0c4a6e;
+  --info-ring: #38bdf8;
+  --bar-neutral: #78716c;
+}
+
+/* Dark mode: same roles, values tuned for a dark background
+   (soft tints become translucent so they don't glare). */
+.dark {
+  color-scheme: dark;
+  --canvas: #0c0a09;
+  --surface: #1c1917;
+  --surface-2: #292524;
+  --surface-3: #3a3532;
+  --ink: #fafaf9;
+  --ink-2: #d6d3d1;
+  --muted: #a8a29e;
+  --faint: #78716c;
+  --line: #292524;
+  --line-strong: #44403c;
+
+  --accent: #047857;
+  --accent-pressed: #065f46;
+  --accent-ink: #34d399;
+  --dark-button: #44403c;
+
+  --hero: #064e3b;
+  --hero-loss: #7f1d1d;
+
+  --good-soft: rgb(16 185 129 / 0.14);
+  --good-ink: #6ee7b7;
+  --good-track: #064e3b;
+  --good-bar: #10b981;
+  --bad-soft: rgb(239 68 68 / 0.14);
+  --bad-ink: #fca5a5;
+  --bad-button: #b91c1c;
+  --warn-soft: rgb(245 158 11 / 0.12);
+  --warn-line: rgb(245 158 11 / 0.3);
+  --warn-ink: #fcd34d;
+  --info-soft: rgb(56 189 248 / 0.12);
+  --info-ink: #7dd3fc;
+  --info-ring: #0284c7;
+  --bar-neutral: #a8a29e;
+}
+
+/* Expose the roles to Tailwind: bg-surface, text-muted, border-line, ... */
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-pressed: var(--accent-pressed);
+  --color-accent-ink: var(--accent-ink);
+  --color-dark-button: var(--dark-button);
+  --color-hero: var(--hero);
+  --color-hero-loss: var(--hero-loss);
+  --color-good-soft: var(--good-soft);
+  --color-good-ink: var(--good-ink);
+  --color-good-track: var(--good-track);
+  --color-good-bar: var(--good-bar);
+  --color-bad-soft: var(--bad-soft);
+  --color-bad-ink: var(--bad-ink);
+  --color-bad-button: var(--bad-button);
+  --color-warn-soft: var(--warn-soft);
+  --color-warn-line: var(--warn-line);
+  --color-warn-ink: var(--warn-ink);
+  --color-info-soft: var(--info-soft);
+  --color-info-ink: var(--info-ink);
+  --color-info-ring: var(--info-ring);
+  --color-bar-neutral: var(--bar-neutral);
+}
+
+/* =====================================================================
+   Base
+   ===================================================================== */
+
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply min-h-dvh bg-stone-50 text-stone-900 antialiased;
+    @apply min-h-dvh bg-canvas text-ink antialiased;
+    /* System fonts render Arabic well on Android (Noto) and iOS. */
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Arabic", "Noto Sans", sans-serif;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  /* Arabic needs a touch more line height to breathe. */
+  html[lang="ar"] body {
+    line-height: 1.6;
+  }
+}
+
+/* =====================================================================
+   Motion
+   Short and subtle: it should feel quick, not showy. Everything is turned
+   off for people who ask their phone for reduced motion.
+   ===================================================================== */
+
+/* Press feedback: buttons and button-like links shrink slightly when tapped. */
+@layer components {
+  button:not(:disabled),
+  .press {
+    transition:
+      transform 0.12s ease,
+      background-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease,
+      opacity 0.15s ease;
+  }
+  button:not(:disabled):active,
+  .press:active {
+    transform: scale(0.96);
+  }
+
+  /* Cards rising in when a screen opens; --i staggers them (0, 1, 2...). */
+  .rise {
+    animation: rise 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(var(--i, 0) * 45ms);
+  }
+
+  /* Expanding panels (delete confirm, add money...) */
+  .pop {
+    animation: pop 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  /* Loading placeholder with a moving shine instead of a spinner. */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface-3) 0%, var(--surface-2) 50%, var(--surface-3) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.2s linear infinite;
+  }
+
+  /* Progress bars glide to their new value. */
+  .bar {
+    transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Screen changes use the browser's View Transitions: the old screen fades
+   out while the new one fades in and slides up a little. The tab bar has its
+   own name so it stays still instead of fading with the page. */
+::view-transition-old(root) {
+  animation: 0.16s ease-out both vt-out;
+}
+::view-transition-new(root) {
+  animation: 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both vt-in;
+}
+@keyframes vt-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.tabbar {
+  view-transition-name: tabbar;
+}
+::view-transition-group(tabbar) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+    transition: none !important;
   }
 }

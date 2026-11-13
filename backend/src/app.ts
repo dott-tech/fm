@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { auth } from "./auth.js";
 import { dbErrorResponse } from "./lib/db-errors.js";
+import { dashboard } from "./routes/dashboard.js";
 import { expenses } from "./routes/expenses.js";
 import { health } from "./routes/health.js";
 import { income } from "./routes/income.js";
@@ -25,6 +26,7 @@ app.route("/income", income);
 app.route("/expenses", expenses);
 app.route("/summary", summary);
 app.route("/pots", pots);
+app.route("/dashboard", dashboard);
 
 app.notFound((c) => c.json({ error: "Not found" }, 404));
 

@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { AuthLayout, ErrorMessage, Field, PrimaryButton } from '../components/ui'
+import { translateServerError, useI18n } from '../i18n'
 import { authClient } from '../lib/auth-client'
 
 export function LoginPage() {
+  const { m } = useI18n()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -21,26 +23,26 @@ export function LoginPage() {
 
     setLoading(false)
     if (error) {
-      setError(error.message ?? 'Could not log in. Try again.')
+      setError(error.message ? translateServerError(error.message) : m.auth.loginFailed)
       return
     }
-    navigate('/', { replace: true })
+    navigate('/', { replace: true, viewTransition: true })
   }
 
   return (
-    <AuthLayout title="Welcome back" subtitle="Log in to see what you really earned this week.">
+    <AuthLayout title={m.auth.loginTitle} subtitle={m.auth.loginSubtitle}>
       <form onSubmit={handleSubmit} className="space-y-5">
-        <Field id="email" name="email" type="email" label="Email" autoComplete="email" required />
-        <Field id="password" name="password" type="password" label="Password" autoComplete="current-password" required />
+        <Field id="email" name="email" type="email" dir="ltr" label={m.auth.email} autoComplete="email" required />
+        <Field id="password" name="password" type="password" dir="ltr" label={m.auth.password} autoComplete="current-password" required />
         <ErrorMessage message={error} />
         <PrimaryButton type="submit" disabled={loading}>
-          {loading ? 'Logging in…' : 'Log in'}
+          {loading ? m.auth.loggingIn : m.auth.logIn}
         </PrimaryButton>
       </form>
-      <p className="mt-8 text-center text-stone-600">
-        New here?{' '}
-        <Link to="/signup" className="font-semibold text-emerald-700">
-          Create an account
+      <p className="mt-8 text-center text-ink-2">
+        {m.auth.newHere}{' '}
+        <Link to="/signup" viewTransition className="font-semibold text-accent-ink">
+          {m.auth.createAccount}
         </Link>
       </p>
     </AuthLayout>

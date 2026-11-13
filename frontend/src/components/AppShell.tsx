@@ -1,56 +1,96 @@
-import type { ReactNode } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { useEffect, type ReactNode } from 'react'
+import { NavLink, Outlet, useLocation } from 'react-router'
+import { useI18n } from '../i18n'
+import { prefetchTabs } from '../lib/queries'
 
-// Frame for the main tabs: page content + a bottom navigation bar that sits
-// under the thumb. Entry screens (add income, add expense...) don't use it:
-// they have their own pinned Save button instead.
+// Frame for the main tabs: page content + a bottom navigation bar under the
+// thumb. Entry screens (add income, add expense...) don't use it: they have
+// their own pinned Save button instead.
 
 const TABS = [
-  { to: '/', label: 'Home', icon: <HomeIcon /> },
-  { to: '/week', label: 'Week', icon: <ChartIcon /> },
-  { to: '/pots', label: 'Plans', icon: <PotIcon /> },
-  { to: '/settings', label: 'Settings', icon: <GearIcon /> },
-]
+  { to: '/', key: 'home', icon: <HomeIcon /> },
+  { to: '/week', key: 'week', icon: <ChartIcon /> },
+  { to: '/pots', key: 'plans', icon: <PotIcon /> },
+  { to: '/settings', key: 'settings', icon: <GearIcon /> },
+] as const
+
+// Once the first screen is up, quietly download the other tabs' code and
+// data, so the first tap on each tab is instant.
+function useWarmUpTabs() {
+  useEffect(() => {
+    const warm = () => {
+      prefetchTabs()
+      void import('../pages/WeekPage')
+      void import('../pages/PotsPage')
+      void import('../pages/SettingsPage')
+      void import('../pages/AddIncomePage')
+      void import('../pages/AddExpensePage')
+    }
+    const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 600))
+    const handle = idle(warm)
+    return () => (window.cancelIdleCallback ?? window.clearTimeout)(handle)
+  }, [])
+}
 
 export function AppShell() {
+  const { m } = useI18n()
+  const { pathname } = useLocation()
+  useWarmUpTabs()
+  const activeIndex = Math.max(
+    0,
+    TABS.findIndex((tab) => (tab.to === '/' ? pathname === '/' : pathname.startsWith(tab.to))),
+  )
+
   return (
     <>
       <div className="pb-24">
         <Outlet />
       </div>
       <nav
-        aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+        aria-label={m.nav.main}
+        className="tabbar fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
       >
-        <ul className="mx-auto grid max-w-md grid-cols-4">
-          {TABS.map((tab) => (
-            <li key={tab.to}>
-              <NavLink
-                to={tab.to}
-                end={tab.to === '/'}
-                className={({ isActive }) =>
-                  `flex h-16 flex-col items-center justify-center gap-1 text-xs font-semibold ${
-                    isActive ? 'text-emerald-700' : 'text-stone-500'
-                  }`
-                }
-              >
-                {tab.icon}
-                {tab.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
+        <div className="relative mx-auto max-w-md">
+          {/* Sliding pill behind the active tab. Logical inset (start) so it
+              also slides the right way in Arabic. */}
+          <span
+            aria-hidden
+            className="absolute top-2 h-12 w-1/4 transition-[inset-inline-start] duration-300 ease-out"
+            style={{ insetInlineStart: `${activeIndex * 25}%` }}
+          >
+            <span className="mx-auto block h-full w-16 rounded-2xl bg-good-soft" />
+          </span>
+          <ul className="relative grid grid-cols-4">
+            {TABS.map((tab) => (
+              <li key={tab.to}>
+                <NavLink
+                  to={tab.to}
+                  end={tab.to === '/'}
+                  viewTransition
+                  className={({ isActive }) =>
+                    `press flex h-16 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${
+                      isActive ? 'text-accent-ink' : 'text-muted'
+                    }`
+                  }
+                >
+                  {tab.icon}
+                  {m.nav[tab.key]}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
       </nav>
     </>
   )
 }
 
-// Title row used by every tab page, with an optional action on the right.
+// Title row used by every tab page, with an optional action on the end side.
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    <header className="mb-5 flex items-end justify-between gap-3">
+    <header className="rise mb-5 flex items-end justify-between gap-3">
       <div>
-        {subtitle && <p className="text-sm text-stone-500">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
         <h1 className="text-2xl font-bold">{title}</h1>
       </div>
       {action}

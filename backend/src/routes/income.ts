@@ -34,7 +34,7 @@ const createIncomeSchema = z.object({
   });
 
 // What the API returns: plain JSON, dates as "YYYY-MM-DD", hours as a number.
-function toJson(entry: IncomeEntry) {
+export function toIncomeJson(entry: IncomeEntry) {
   return {
     id: entry.id,
     date: fromDbDate(entry.date),
@@ -75,7 +75,7 @@ export const income = new Hono<AuthEnv>()
         note: body.note || null,
       },
     });
-    return c.json(toJson(entry), 201);
+    return c.json(toIncomeJson(entry), 201);
   })
 
   // GET /api/income?from=2026-11-08&to=2026-11-14 -> entries, newest first
@@ -94,7 +94,7 @@ export const income = new Hono<AuthEnv>()
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       take: limit,
     });
-    return c.json(entries.map(toJson));
+    return c.json(entries.map(toIncomeJson));
   })
 
   // GET /api/income/defaults -> pre-fill values for the add-income form:

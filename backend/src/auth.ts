@@ -19,6 +19,12 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 30, // stay logged in for 30 days
     updateAge: 60 * 60 * 24, // refresh the expiry at most once a day
+    // Speed: keep a signed copy of the session in a cookie for 5 minutes, so
+    // most requests don't need a database lookup just to know who's calling.
+    // Trade-off: a session revoked on another device stays usable for up to
+    // 5 minutes, and user fields in it may be up to 5 minutes old, so routes
+    // read changeable settings (target, days off) from the database instead.
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
   user: {
     // Our extra columns on the users table.

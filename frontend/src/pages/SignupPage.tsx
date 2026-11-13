@@ -1,14 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AuthLayout, ErrorMessage, Field, PrimaryButton } from '../components/ui'
+import { AuthLayout, ChoiceButton, ErrorMessage, Field, PrimaryButton } from '../components/ui'
+import { translateServerError, useI18n } from '../i18n'
 import { authClient, type Role } from '../lib/auth-client'
 
-const ROLE_OPTIONS: { value: Role; label: string; hint: string }[] = [
-  { value: 'cab_driver', label: 'Cab driver', hint: 'Car, taxi or ride-hailing' },
-  { value: 'delivery_rider', label: 'Delivery rider', hint: 'Motorcycle, Toters, Talabat…' },
-]
+const ROLES: Role[] = ['cab_driver', 'delivery_rider']
 
 export function SignupPage() {
+  const { m } = useI18n()
   const navigate = useNavigate()
   const [role, setRole] = useState<Role>('cab_driver')
   const [error, setError] = useState<string | null>(null)
@@ -29,58 +28,53 @@ export function SignupPage() {
 
     setLoading(false)
     if (error) {
-      setError(error.message ?? 'Could not create your account. Try again.')
+      setError(error.message ? translateServerError(error.message) : m.auth.signupFailed)
       return
     }
     // Better Auth logs the user in right after sign-up.
-    navigate('/', { replace: true })
+    navigate('/', { replace: true, viewTransition: true })
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="Takes 30 seconds. Then log every trip in under 10.">
+    <AuthLayout title={m.auth.signupTitle} subtitle={m.auth.signupSubtitle}>
       <form onSubmit={handleSubmit} className="space-y-5">
         <fieldset>
-          <legend className="mb-1.5 text-sm font-medium text-stone-700">I work as a</legend>
+          <legend className="mb-1.5 text-sm font-medium text-ink-2">{m.auth.iWorkAs}</legend>
           <div className="grid grid-cols-2 gap-3">
-            {ROLE_OPTIONS.map((option) => (
-              <label
-                key={option.value}
-                className="flex min-h-20 cursor-pointer flex-col justify-center rounded-xl border-2 border-stone-200 bg-white p-3 has-checked:border-emerald-600 has-checked:bg-emerald-50"
+            {ROLES.map((value) => (
+              <ChoiceButton
+                key={value}
+                selected={role === value}
+                onClick={() => setRole(value)}
+                className="flex min-h-20 flex-col items-start justify-center rounded-xl p-3 text-start"
               >
-                <input
-                  type="radio"
-                  name="role"
-                  value={option.value}
-                  checked={role === option.value}
-                  onChange={() => setRole(option.value)}
-                  className="sr-only"
-                />
-                <span className="font-semibold">{option.label}</span>
-                <span className="text-xs text-stone-500">{option.hint}</span>
-              </label>
+                <span className="text-base font-semibold">{m.roles[value].label}</span>
+                <span className="text-xs font-normal text-muted">{m.roles[value].hint}</span>
+              </ChoiceButton>
             ))}
           </div>
         </fieldset>
-        <Field id="name" name="name" label="Name" autoComplete="name" required />
-        <Field id="email" name="email" type="email" label="Email" autoComplete="email" required />
+        <Field id="name" name="name" label={m.auth.name} autoComplete="name" required />
+        <Field id="email" name="email" type="email" dir="ltr" label={m.auth.email} autoComplete="email" required />
         <Field
           id="password"
           name="password"
           type="password"
-          label="Password (8+ characters)"
+          dir="ltr"
+          label={m.auth.passwordNew}
           autoComplete="new-password"
           minLength={8}
           required
         />
         <ErrorMessage message={error} />
         <PrimaryButton type="submit" disabled={loading}>
-          {loading ? 'Creating account…' : 'Create account'}
+          {loading ? m.auth.creatingAccount : m.auth.createAccount}
         </PrimaryButton>
       </form>
-      <p className="mt-8 text-center text-stone-600">
-        Already have an account?{' '}
-        <Link to="/login" className="font-semibold text-emerald-700">
-          Log in
+      <p className="mt-8 text-center text-ink-2">
+        {m.auth.alreadyHave}{' '}
+        <Link to="/login" viewTransition className="font-semibold text-accent-ink">
+          {m.auth.logIn}
         </Link>
       </p>
     </AuthLayout>

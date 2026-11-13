@@ -1,29 +1,21 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { AmountInput } from '../components/AmountInput'
 import { PageHeader } from '../components/AppShell'
-import { api, type Pot, type PotsOverview } from '../lib/api'
+import { Rise, Skeleton } from '../components/ui'
+import { fmt, useI18n } from '../i18n'
+import type { Pot } from '../lib/api'
 import { authClient } from '../lib/auth-client'
-import { daysUntil, formatDay, formatMoney, localIsoDate } from '../lib/format'
-import { repeatLabel } from '../lib/labels'
+import { daysUntil, formatDay, formatMoney } from '../lib/format'
+import { daysText, repeatLabel } from '../lib/labels'
+import { useAddToPot, useDeletePot, usePayBill, usePots } from '../lib/queries'
 
 // Bills & goals: every pot with its progress, due date and daily amount.
 export function PotsPage() {
+  const { m } = useI18n()
   const { data: session } = authClient.useSession()
   const currency = session?.user.currency ?? 'IQD'
-  const [overview, setOverview] = useState<PotsOverview | null>(null)
-  const [error, setError] = useState(false)
-
-  const load = useCallback(() => {
-    api<PotsOverview>(`/pots?date=${localIsoDate()}`)
-      .then((data) => {
-        setOverview(data)
-        setError(false)
-      })
-      .catch(() => setError(true))
-  }, [])
-
-  useEffect(load, [load])
+  const { data: overview, error } = usePots()
 
   const bills = overview?.pots.filter((p) => p.kind === 'bill') ?? []
   const goals = overview?.pots.filter((p) => p.kind === 'goal') ?? []
@@ -31,62 +23,61 @@ export function PotsPage() {
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-6">
       <PageHeader
-        title="Bills & goals"
+        title={m.pots.title}
         action={
           <Link
             to="/pots/new"
-            className="flex h-11 items-center rounded-xl bg-emerald-700 px-4 font-semibold text-white shadow-sm active:bg-emerald-800"
+            viewTransition
+            className="press flex h-11 items-center rounded-xl bg-accent px-4 font-semibold text-white shadow-sm active:bg-accent-pressed"
           >
-            + Add
+            {m.pots.add}
           </Link>
         }
       />
 
-      {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-red-700">Couldn't load your bills and goals.</p>}
-      {!overview && !error && <div className="h-40 animate-pulse rounded-2xl bg-stone-200" aria-label="Loading" />}
+      {error && !overview && <p className="rounded-xl bg-bad-soft px-4 py-3 text-bad-ink">{m.pots.couldNotLoad}</p>}
+      {!overview && !error && (
+        <div className="space-y-3">
+          <Skeleton className="h-16" />
+          <Skeleton className="h-40" />
+          <Skeleton className="h-40" />
+        </div>
+      )}
 
       {overview && (
         <>
-          <p className="mb-5 rounded-2xl bg-emerald-50 px-4 py-3 text-emerald-900">
-            Every day: <span className="font-bold">{formatMoney(overview.todayTotal, currency)}</span> to put aside
-            {overview.todayLeft > 0 ? (
-              <span className="block text-sm">{formatMoney(overview.todayLeft, currency)} still to go today</span>
-            ) : (
-              overview.pots.length > 0 && <span className="block text-sm">✓ Done for today</span>
-            )}
-          </p>
-
-          <PotSection title="Fixed bills" empty="No bills yet. Add rent, installments, phone plan…" pots={bills} currency={currency} onChange={load} />
-          <PotSection title="Goals & needs" empty="No goals yet. Saving for tyres, Eid, an emergency fund?" pots={goals} currency={currency} onChange={load} />
+          <Rise i={0}>
+            <p className="mb-5 rounded-2xl bg-good-soft px-4 py-3 text-good-ink">
+              {fmt(m.pots.everyDay, { amount: formatMoney(overview.todayTotal, currency) })}
+              {overview.todayLeft > 0 ? (
+                <span className="block text-sm">{fmt(m.pots.stillToGo, { amount: formatMoney(overview.todayLeft, currency) })}</span>
+              ) : (
+                overview.pots.length > 0 && <span className="block text-sm">{m.setAside.doneToday}</span>
+              )}
+            </p>
+          </Rise>
+          <Rise i={1}>
+            <PotSection title={m.pots.fixedBills} empty={m.pots.emptyBills} pots={bills} currency={currency} />
+          </Rise>
+          <Rise i={2}>
+            <PotSection title={m.pots.goalsNeeds} empty={m.pots.emptyGoals} pots={goals} currency={currency} />
+          </Rise>
         </>
       )}
-
     </main>
   )
 }
 
-function PotSection({
-  title,
-  empty,
-  pots,
-  currency,
-  onChange,
-}: {
-  title: string
-  empty: string
-  pots: Pot[]
-  currency: string
-  onChange: () => void
-}) {
+function PotSection({ title, empty, pots, currency }: { title: string; empty: string; pots: Pot[]; currency: string }) {
   return (
     <section className="mb-6">
-      <h2 className="mb-2 text-sm font-semibold text-stone-500">{title}</h2>
+      <h2 className="mb-2 text-sm font-semibold text-muted">{title}</h2>
       {pots.length === 0 ? (
-        <p className="rounded-2xl bg-white p-4 text-sm text-stone-500 shadow-sm">{empty}</p>
+        <p className="rounded-2xl bg-surface p-4 text-sm text-muted shadow-sm">{empty}</p>
       ) : (
         <ul className="space-y-3">
           {pots.map((pot) => (
-            <PotCard key={pot.id} pot={pot} currency={currency} onChange={onChange} />
+            <PotCard key={pot.id} pot={pot} currency={currency} />
           ))}
         </ul>
       )}
@@ -94,107 +85,107 @@ function PotSection({
   )
 }
 
-// "Due today", "Overdue", "Due Tue 2 Dec · 20 days", "By 28 Feb · 108 days", "3,000/day · no deadline"
-function whenText(pot: Pot, currency: string): string {
-  if (!pot.dueDate) return `${formatMoney(pot.chosenDailyAmount ?? 0, currency)} a day · no deadline`
-  const days = daysUntil(pot.dueDate)
-  if (pot.overdue) return `Overdue since ${formatDay(pot.dueDate)}`
-  if (days === 0) return pot.kind === 'bill' ? 'Due today' : 'Deadline today'
-  const prefix = pot.kind === 'bill' ? 'Due' : 'By'
-  return `${prefix} ${formatDay(pot.dueDate)} · ${days} ${days === 1 ? 'day' : 'days'}`
+// "Due today", "Overdue since…", "Due Tue 2 Dec · 20 days", "3,000 a day · no deadline"
+function useWhenText() {
+  const { m } = useI18n()
+  return (pot: Pot, currency: string): string => {
+    if (!pot.dueDate) return fmt(m.pots.noDeadline, { amount: formatMoney(pot.chosenDailyAmount ?? 0, currency) })
+    const days = daysUntil(pot.dueDate)
+    if (pot.overdue) return fmt(m.pots.overdueSince, { date: formatDay(pot.dueDate) })
+    if (days === 0) return pot.kind === 'bill' ? m.pots.dueToday : m.pots.deadlineToday
+    return fmt(pot.kind === 'bill' ? m.pots.due : m.pots.by, { date: formatDay(pot.dueDate), days: daysText(days) })
+  }
 }
 
 type Panel = null | 'add' | 'pay' | 'delete'
 
-function PotCard({ pot, currency, onChange }: { pot: Pot; currency: string; onChange: () => void }) {
+function PotCard({ pot, currency }: { pot: Pot; currency: string }) {
+  const { m } = useI18n()
+  const whenText = useWhenText()
   const [panel, setPanel] = useState<Panel>(null)
   const [amount, setAmount] = useState(0)
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const add = useAddToPot()
+  const pay = usePayBill()
+  const remove = useDeletePot()
+  const busy = add.isPending || pay.isPending || remove.isPending
+  const error = add.error ?? pay.error ?? remove.error
 
   const progress = Math.min(1, pot.saved / pot.targetAmount)
-
-  async function run(action: () => Promise<unknown>) {
-    setBusy(true)
-    setError(null)
-    try {
-      await action()
-      setPanel(null)
-      setAmount(0)
-      onChange()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong.')
-    } finally {
-      setBusy(false)
-    }
+  const close = () => {
+    setPanel(null)
+    setAmount(0)
   }
 
   function handleAdd(e: FormEvent) {
     e.preventDefault()
-    if (amount <= 0) return
-    void run(() => api(`/pots/${pot.id}/transfers`, { method: 'POST', body: { date: localIsoDate(), amount } }))
+    if (amount > 0) add.mutate({ id: pot.id, amount }, { onSuccess: close })
   }
 
   return (
-    <li className="rounded-2xl bg-white p-4 shadow-sm">
+    <li className="rounded-2xl bg-surface p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-semibold">
             {pot.icon && <span aria-hidden>{pot.icon} </span>}
             {pot.name}
           </p>
-          <p className={`text-sm ${pot.overdue ? 'font-semibold text-red-700' : 'text-stone-500'}`}>
+          <p className={`text-sm ${pot.overdue ? 'font-semibold text-bad-ink' : 'text-muted'}`}>
             {whenText(pot, currency)}
             {pot.repeatEvery && pot.repeatUnit ? ` · ${repeatLabel(pot.repeatEvery, pot.repeatUnit)}` : ''}
           </p>
         </div>
         {!pot.funded && pot.dailyAmount > 0 && (
-          <p className="shrink-0 rounded-full bg-stone-100 px-3 py-1 text-sm font-semibold">
-            {formatMoney(pot.dailyAmount, currency)}/day
+          <p className="shrink-0 rounded-full bg-surface-2 px-3 py-1 text-sm font-semibold">
+            {fmt(m.pots.perDay, { amount: formatMoney(pot.dailyAmount, currency) })}
           </p>
         )}
       </div>
 
       {/* Progress: saved so far out of the target. */}
       <div
-        className="mt-3 h-2.5 overflow-hidden rounded-full bg-emerald-100"
+        className="mt-3 h-2.5 overflow-hidden rounded-full bg-good-track"
         role="progressbar"
-        aria-label={`${pot.name}: saved`}
+        aria-label={fmt(m.pots.savedAria, { name: pot.name })}
         aria-valuemin={0}
         aria-valuemax={pot.targetAmount}
         aria-valuenow={pot.saved}
       >
-        <div className="h-full rounded-full bg-emerald-600" style={{ width: `${progress * 100}%` }} />
+        <div className="bar h-full rounded-full bg-good-bar" style={{ width: `${progress * 100}%` }} />
       </div>
       <p className="mt-1.5 flex justify-between text-sm">
         <span>
-          <span className="font-semibold">{formatMoney(pot.saved, currency)}</span>
-          <span className="text-stone-500"> of {formatMoney(pot.targetAmount, currency)}</span>
+          <span className="font-semibold">{formatMoney(pot.saved, currency)}</span>{' '}
+          <span className="text-muted">{fmt(m.pots.savedOf, { amount: formatMoney(pot.targetAmount, currency) })}</span>
         </span>
-        {pot.funded ? <span className="font-semibold text-emerald-700">✓ Ready</span> : <span className="text-stone-500">{formatMoney(pot.remaining, currency)} to go</span>}
+        {pot.funded ? (
+          <span className="font-semibold text-accent-ink">{m.pots.ready}</span>
+        ) : (
+          <span className="text-muted">{fmt(m.pots.toGo, { amount: formatMoney(pot.remaining, currency) })}</span>
+        )}
       </p>
 
       {panel === null && (
         <div className="mt-3 flex gap-2">
-          <button onClick={() => setPanel('add')} className="h-10 flex-1 rounded-xl bg-stone-100 text-sm font-semibold active:bg-stone-200">
-            + Add money
+          <button onClick={() => setPanel('add')} className="h-10 flex-1 rounded-xl bg-surface-2 text-sm font-semibold active:bg-surface-3">
+            {m.pots.addMoney}
           </button>
           {pot.kind === 'bill' && (
-            <button onClick={() => setPanel('pay')} className="h-10 flex-1 rounded-xl bg-stone-800 text-sm font-semibold text-white active:bg-stone-900">
-              Pay bill
+            <button onClick={() => setPanel('pay')} className="h-10 flex-1 rounded-xl bg-dark-button text-sm font-semibold text-white">
+              {m.pots.payBill}
             </button>
           )}
           <Link
             to={`/pots/${pot.id}/edit`}
-            aria-label={`Edit ${pot.name}`}
-            className="grid h-10 w-10 place-items-center rounded-xl text-stone-500 active:bg-stone-100"
+            viewTransition
+            aria-label={fmt(m.pots.edit, { name: pot.name })}
+            className="press grid h-10 w-10 place-items-center rounded-xl text-muted active:bg-surface-2"
           >
             ✎
           </Link>
           <button
             onClick={() => setPanel('delete')}
-            aria-label={`Delete ${pot.name}`}
-            className="h-10 w-10 rounded-xl text-stone-400 active:bg-stone-100"
+            aria-label={fmt(m.pots.deleteAria, { name: pot.name })}
+            className="h-10 w-10 rounded-xl text-faint active:bg-surface-2"
           >
             ✕
           </button>
@@ -202,42 +193,31 @@ function PotCard({ pot, currency, onChange }: { pot: Pot; currency: string; onCh
       )}
 
       {panel === 'add' && (
-        <form onSubmit={handleAdd} className="mt-3 space-y-2">
-          <AmountInput id={`add-${pot.id}`} label="How much are you putting in?" value={amount} onChange={setAmount} currency={currency} />
-          <PanelButtons busy={busy} confirmLabel="Add to pot" disabled={amount <= 0} onCancel={() => setPanel(null)} />
+        <form onSubmit={handleAdd} className="pop mt-3 space-y-2">
+          <AmountInput id={`add-${pot.id}`} label={m.pots.howMuchIn} value={amount} onChange={setAmount} currency={currency} />
+          <PanelButtons busy={busy} confirmLabel={m.pots.addToPot} disabled={amount <= 0} onCancel={close} />
         </form>
       )}
 
       {panel === 'pay' && (
-        <div className="mt-3 rounded-xl bg-stone-50 p-3 text-sm">
+        <div className="pop mt-3 rounded-xl bg-surface-2 p-3 text-sm">
           <p>
-            Record <span className="font-semibold">{formatMoney(pot.targetAmount, currency)}</span> as paid today? It's added to your costs
-            {pot.saved > 0 ? `, ${formatMoney(Math.min(pot.saved, pot.targetAmount), currency)} comes out of this pot` : ''}
-            {pot.repeatEvery ? ', and the next due date is set.' : ', and this bill is closed.'}
+            {fmt(m.pots.payConfirm, { amount: formatMoney(pot.targetAmount, currency) })}
+            {pot.saved > 0 ? fmt(m.pots.payFromPot, { amount: formatMoney(Math.min(pot.saved, pot.targetAmount), currency) }) : ''}
+            {pot.repeatEvery ? m.pots.payNext : m.pots.payClose}
           </p>
-          <PanelButtons
-            busy={busy}
-            confirmLabel="Yes, paid"
-            onCancel={() => setPanel(null)}
-            onConfirm={() => run(() => api(`/pots/${pot.id}/pay`, { method: 'POST', body: { date: localIsoDate() } }))}
-          />
+          <PanelButtons busy={busy} confirmLabel={m.pots.yesPaid} onCancel={close} onConfirm={() => pay.mutate(pot.id, { onSuccess: close })} />
         </div>
       )}
 
       {panel === 'delete' && (
-        <div className="mt-3 rounded-xl bg-red-50 p-3 text-sm text-red-900">
-          <p>Delete "{pot.name}" and its history? The money you put aside isn't touched, only this plan.</p>
-          <PanelButtons
-            busy={busy}
-            confirmLabel="Delete"
-            danger
-            onCancel={() => setPanel(null)}
-            onConfirm={() => run(() => api(`/pots/${pot.id}`, { method: 'DELETE' }))}
-          />
+        <div className="pop mt-3 rounded-xl bg-bad-soft p-3 text-sm text-bad-ink">
+          <p>{fmt(m.pots.deleteConfirm, { name: pot.name })}</p>
+          <PanelButtons busy={busy} confirmLabel={m.common.delete} danger onCancel={close} onConfirm={() => remove.mutate(pot.id)} />
         </div>
       )}
 
-      {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="mt-2 text-sm text-bad-ink">{error.message}</p>}
     </li>
   )
 }
@@ -257,18 +237,19 @@ function PanelButtons({
   disabled?: boolean
   danger?: boolean
 }) {
+  const { m } = useI18n()
   return (
     <div className="mt-3 grid grid-cols-2 gap-2">
-      <button type="button" onClick={onCancel} className="h-11 rounded-xl border border-stone-300 font-semibold">
-        Cancel
+      <button type="button" onClick={onCancel} className="h-11 rounded-xl border border-line-strong font-semibold text-ink">
+        {m.common.cancel}
       </button>
       <button
         type={onConfirm ? 'button' : 'submit'}
         onClick={onConfirm}
         disabled={busy || disabled}
-        className={`h-11 rounded-xl font-semibold text-white disabled:opacity-60 ${danger ? 'bg-red-700' : 'bg-emerald-700'}`}
+        className={`h-11 rounded-xl font-semibold text-white disabled:opacity-60 ${danger ? 'bg-bad-button' : 'bg-accent'}`}
       >
-        {busy ? 'Saving…' : confirmLabel}
+        {busy ? m.common.saving : confirmLabel}
       </button>
     </div>
   )

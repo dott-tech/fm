@@ -1,4 +1,5 @@
-import { formatNumber } from '../lib/format'
+import { useI18n } from '../i18n'
+import { currencyLabel, formatNumber } from '../lib/format'
 
 const QUICK_ADD = [1_000, 5_000, 10_000]
 
@@ -8,15 +9,15 @@ export function parseAmount(text: string): number {
   return digits ? Number(digits) : 0
 }
 
-// The big "how much" box used by the add-income and add-expense screens.
-// Formats with thousands separators while typing; quick buttons add common
-// amounts so counting cash takes taps, not typing.
+// The big "how much" box used by the entry screens. Formats with thousands
+// separators while typing; quick buttons add common amounts so counting cash
+// takes taps, not typing.
 export function AmountInput({
   label,
   value,
   onChange,
   currency,
-  id = "amount",
+  id = 'amount',
   autoFocus = true,
 }: {
   label: string
@@ -26,41 +27,41 @@ export function AmountInput({
   id?: string
   autoFocus?: boolean
 }) {
+  const { m } = useI18n()
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-stone-700">
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-ink-2">
         {label}
       </label>
-      <div className="flex items-baseline gap-2 rounded-2xl border-2 border-stone-300 bg-white px-4 py-3 focus-within:border-emerald-600">
+      <div className="flex items-baseline gap-2 rounded-2xl border-2 border-line-strong bg-surface px-4 py-3 transition-colors focus-within:border-accent">
+        {/* Numbers stay left-to-right even in Arabic, aligned to the start side. */}
         <input
           id={id}
+          dir="ltr"
           inputMode="numeric"
           autoComplete="off"
           autoFocus={autoFocus}
           placeholder="0"
           value={value ? formatNumber(value) : ''}
           onChange={(e) => onChange(parseAmount(e.target.value))}
-          className="w-full min-w-0 bg-transparent text-4xl font-bold outline-none"
+          className="w-full min-w-0 bg-transparent text-4xl font-bold text-ink outline-none placeholder:text-faint rtl:text-right"
         />
-        <span className="text-lg font-semibold text-stone-500">{currency}</span>
+        <span className="text-lg font-semibold text-muted">{currencyLabel(currency)}</span>
       </div>
       <div className="mt-2 grid grid-cols-4 gap-2">
         {QUICK_ADD.map((step) => (
           <button
             key={step}
             type="button"
+            dir="ltr"
             onClick={() => onChange(value + step)}
-            className="h-11 rounded-xl bg-stone-200/70 text-sm font-semibold text-stone-700 active:bg-stone-300"
+            className="h-11 rounded-xl bg-surface-2 text-sm font-semibold text-ink-2 active:bg-surface-3"
           >
             +{formatNumber(step)}
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => onChange(0)}
-          className="h-11 rounded-xl text-sm font-semibold text-stone-500 active:bg-stone-200"
-        >
-          Clear
+        <button type="button" onClick={() => onChange(0)} className="h-11 rounded-xl text-sm font-semibold text-muted active:bg-surface-2">
+          {m.amount.clear}
         </button>
       </div>
     </div>

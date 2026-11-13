@@ -1,12 +1,20 @@
 import { Navigate, Outlet } from 'react-router'
 import { authClient } from '../lib/auth-client'
+import { Skeleton } from './ui'
 
 // Wraps pages that need a logged-in user. Not logged in -> go to /login.
 export function RequireAuth() {
   const { data: session, isPending } = authClient.useSession()
 
   if (isPending) {
-    return <p className="p-6 text-center text-stone-500">Loading…</p>
+    // Same shape as the dashboard, so the screen doesn't jump when it loads.
+    return (
+      <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-6">
+        <Skeleton className="h-12 w-40" />
+        <Skeleton className="h-52" />
+        <Skeleton className="h-14" />
+      </div>
+    )
   }
   if (!session) {
     return <Navigate to="/login" replace />

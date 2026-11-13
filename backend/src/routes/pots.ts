@@ -114,18 +114,26 @@ function withPlan(pot: Pot, saved: number, putAsideToday: number, today: string,
 }
 
 // Active pots for the user, each with its daily plan, plus today's totals.
-async function potsOverview(userId: string, today: string) {
-  const [pots, day] = await Promise.all([
-    prisma.pot.findMany({ where: { userId, archivedAt: null } }),
+// Speed: all five queries (pots, user, skip, balances, today's deposits) run
+// at the same time, so the overview costs ONE database round trip. Balances
+// are filtered by the pot's owner through the relation, so they don't need
+// the pot ids first.
+export async function potsOverview(userId: string, today: string) {
+  const activePot = { userId, archivedAt: null };
+  const [pots, day, all, todays] = await Promise.all([
+    prisma.pot.findMany({ where: activePot }),
     dayContext(userId, today),
+    prisma.potTransfer.groupBy({ by: ["potId"], where: { pot: activePot }, _sum: { amount: true } }),
+    prisma.potTransfer.groupBy({
+      by: ["potId"],
+      where: { pot: activePot, date: toDbDate(today), amount: { gt: 0 } }, // money put in today
+      _sum: { amount: true },
+    }),
   ]);
-  const b = await balances(
-    userId,
-    pots.map((p) => p.id),
-    today,
-  );
+  const saved = new Map(all.map((r) => [r.potId, r._sum.amount ?? 0]));
+  const putIn = new Map(todays.map((r) => [r.potId, r._sum.amount ?? 0]));
   const rows = pots
-    .map((p) => withPlan(p, b.saved(p.id), b.putAsideToday(p.id), today, day))
+    .map((p) => withPlan(p, saved.get(p.id) ?? 0, putIn.get(p.id) ?? 0, today, day))
     // Bills first (soonest due first), then goals (soonest deadline, then by name).
     .sort(
       (a, b) =>

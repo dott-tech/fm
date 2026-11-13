@@ -1,3 +1,5 @@
+import { getMessages, translateServerError } from '../i18n'
+
 // Minimal JSON fetch wrapper for our own backend (/api/*).
 // The session cookie is sent automatically because the API is same-origin.
 
@@ -19,10 +21,11 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 
   if (!res.ok) {
     const data: unknown = await res.json().catch(() => null)
+    // Server messages are English; translateServerError shows Arabic when chosen.
     const message =
       data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
-        ? data.error
-        : 'Something went wrong. Check your connection and try again.'
+        ? translateServerError(data.error)
+        : getMessages().common.somethingWrong
     throw new ApiError(res.status, message)
   }
   if (res.status === 204) return undefined as T

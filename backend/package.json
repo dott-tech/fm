@@ -2,16 +2,26 @@
   "name": "driver-finance-backend",
   "version": "1.0.0",
   "main": "dist/index.js",
+  "type": "module",
+  "imports": {
+    "#prisma": {
+      "types": "./src/generated/prisma/client.ts",
+      "workerd": "./src/generated/prisma-worker/client.ts",
+      "default": "./src/generated/prisma/client.ts"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "build:web": "npm --prefix ../frontend run build",
+    "cf:dev": "prisma generate && npm run build:web && wrangler dev",
+    "deploy": "prisma generate && npm run build:web && wrangler deploy"
   },
   "license": "ISC",
-  "type": "module",
   "dependencies": {
     "@hono/node-server": "^2.1.8",
     "@hono/zod-validator": "^0.9.1",
@@ -26,7 +36,8 @@
     "@types/node": "^26.6.6",
     "prisma": "^7.10.1",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "wrangler": "^4.161.0"
   },
   "allowScripts": {
     "@prisma/engines@7.10.1": true,

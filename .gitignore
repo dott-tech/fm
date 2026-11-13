@@ -26,3 +26,8 @@ backend/src/generated/
 
 # local Claude Code / editor tooling
 .claude/
+
+# Cloudflare local secrets / build output
+.dev.vars
+.dev.vars.*
+.wrangler/

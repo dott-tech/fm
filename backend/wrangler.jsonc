@@ -1,0 +1,21 @@
+// Cloudflare Workers config: ONE Worker serves both the API (/api/*) and the
+// built frontend, on the same domain, so session cookies just work.
+// Deploy with `npm run deploy` (needs `npx wrangler login` once).
+// Secrets (DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, FRONTEND_URL)
+// are set with `npx wrangler secret put NAME`, never in this file.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "driver-finance",
+  "main": "src/worker.ts",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../frontend/dist",
+    // Unknown paths get index.html, so React Router handles them.
+    "not_found_handling": "single-page-application",
+    // API calls always go to the Worker, never to the static files.
+    "run_worker_first": ["/api/*"]
+  },
+  "vars": { "NODE_ENV": "production" },
+  "observability": { "enabled": true }
+}

@@ -12,9 +12,18 @@
 //   logged at 11pm never shifts to another day because of time zones.
 // - Tables and columns are snake_case in Postgres, camelCase in TypeScript.
 
+// Two copies of the client: one for Node (local dev, scripts) and one for
+// Cloudflare Workers (production). src/db.ts imports "#prisma", and
+// package.json "imports" picks the right copy for the runtime.
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+}
+
+generator worker {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma-worker"
+  runtime  = "workerd"
 }
 
 datasource db {

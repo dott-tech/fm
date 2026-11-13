@@ -6,15 +6,15 @@ Tick items off as they're done.
 ## Security
 
 - [ ] **Rate limiting.** Better Auth only enables it when `NODE_ENV=production`,
-      and its default store is in memory, which doesn't work across Vercel's
-      serverless instances. Set `rateLimit.storage: "database"` (adds a
+      and its default store is in memory, which doesn't work across Cloudflare's
+      Worker instances. Set `rateLimit.storage: "database"` (adds a
       rate-limit table via migration) and stricter `customRules` for
       `/sign-in/email` and `/sign-up/email`.
 - [ ] **HTTPS.** Set `BETTER_AUTH_URL` and `FRONTEND_URL` to the `https://`
       production URLs, so session cookies get the `Secure` flag and
       `trustedOrigins` matches.
 - [ ] **Fresh secrets.** Generate a new `BETTER_AUTH_SECRET` for production
-      (never reuse the dev one) and set it in Vercel's environment variables.
+      (never reuse the dev one) and set it as a Cloudflare secret (see docs/deploy.md).
 - [ ] **Email verification.** Needs an email provider (e.g. Resend). Turn on
       `requireEmailVerification`. Alternative: phone number + SMS code.
 - [ ] **Forgot password.** Same provider; implement `sendResetPassword`.

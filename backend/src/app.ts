@@ -11,7 +11,7 @@ import { pots } from "./routes/pots.js";
 import { summary } from "./routes/summary.js";
 
 // The app is defined separately from how it's started (index.ts), so the
-// same app can later run on Vercel functions without changes.
+// same app runs on Cloudflare Workers (worker.ts) without changes.
 export const app = new Hono().basePath("/api");
 
 app.use(logger());

@@ -94,7 +94,14 @@ async function dayContext(userId: string, today: string): Promise<DayContext> {
 function withPlan(pot: Pot, saved: number, putAsideToday: number, today: string, day: DayContext) {
   const dueDate = pot.dueDate ? fromDbDate(pot.dueDate) : null;
   const plan = planPot(
-    { targetAmount: pot.targetAmount, dueDate, dailyAmount: pot.dailyAmount, saved, putAsideToday },
+    {
+      targetAmount: pot.targetAmount,
+      dueDate,
+      dailyAmount: pot.dailyAmount,
+      saved,
+      putAsideToday,
+      repeat: pot.repeatEvery && pot.repeatUnit ? { every: pot.repeatEvery, unit: pot.repeatUnit } : null,
+    },
     today,
     day,
   );

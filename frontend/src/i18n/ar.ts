@@ -285,6 +285,7 @@ export const ar: Messages = {
     unit: 'الوحدة',
     units: { day: 'أيام', week: 'أسابيع', month: 'أشهر' },
     previewDaily: '{amount} يوميًا لمدة {days}',
+    previewSteady: 'حوالي {amount} في كل يوم عمل، حتى تكون الدفعات في أيام العطلة مغطاة',
     previewReached: 'تصل إليه خلال {days} تقريبًا',
     previewFull: 'تم ادخاره بالكامل',
     giveName: 'أعطه اسمًا.',

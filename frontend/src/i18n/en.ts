@@ -275,6 +275,7 @@ export const en = {
     unit: 'Unit',
     units: { day: 'days', week: 'weeks', month: 'months' },
     previewDaily: '{amount} a day for {days}',
+    previewSteady: 'About {amount} each working day, so payments on days off are covered',
     previewReached: 'Reached in about {days}',
     previewFull: 'Already fully saved',
     giveName: 'Give it a name.',

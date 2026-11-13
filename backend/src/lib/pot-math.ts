@@ -74,7 +74,14 @@ export type PotPlanInput = {
   dailyAmount: number | null; // chosen daily amount, for goals without a deadline
   saved: number; // everything in the pot right now (sum of all transfers)
   putAsideToday: number; // money put IN today (already included in `saved`)
+  // Repeating bills: how often the amount comes due again. Used to look
+  // ahead, so a payment that falls on a day off is saved up beforehand.
+  repeat?: { every: number; unit: RepeatUnit } | null;
 };
+
+// How far ahead repeating bills are planned. Two weeks always covers every
+// day-off pattern (days off repeat weekly).
+export const LOOKAHEAD_DAYS = 14;
 
 export type PotPlan = {
   remaining: number; // still missing to reach the target
@@ -111,12 +118,35 @@ export function planPot(
     const from = todayCounts ? today : addDays(today, 1);
     daysLeft = overdue ? (todayCounts ? 1 : 0) : workingDaysBetween(from, pot.dueDate, daysOff);
     // No working day left before the date: everything is due at once.
-    dailyAmount = roundUp(missingAtStartOfToday / Math.max(1, daysLeft));
+    let rate = missingAtStartOfToday / Math.max(1, daysLeft);
+    let mostNeeded = missingAtStartOfToday;
+
+    // Repeating bills: also make sure the NEXT payments are covered in time.
+    // A payment due on a day off (or right after one) must be saved on the
+    // working days before it, so it's spread evenly over them. We take the
+    // smallest steady daily amount that meets every payment in the next two
+    // weeks. Example: 10,000 due every day, Friday off -> 70,000 a week over
+    // 6 working days -> 11,750 a day (rounded), and Friday is already covered.
+    // Money left in the pot after a payment counts toward the next one.
+    if (pot.repeat && !overdue) {
+      const horizonEnd = addDays(today, LOOKAHEAD_DAYS - 1);
+      let due = nextDueDate(pot.dueDate, pot.repeat.every, pot.repeat.unit);
+      let payments = 2;
+      while (daysBetween(due, horizonEnd) >= 0) {
+        const needed = payments * pot.targetAmount - savedBeforeToday;
+        const workingDays = workingDaysBetween(from, due, daysOff);
+        if (needed > 0 && workingDays > 0) {
+          rate = Math.max(rate, needed / workingDays);
+          mostNeeded = Math.max(mostNeeded, needed);
+        }
+        due = nextDueDate(due, pot.repeat.every, pot.repeat.unit);
+        payments++;
+      }
+    }
+    dailyAmount = Math.min(roundUp(rate), mostNeeded); // never more than is needed
   } else {
-    dailyAmount = pot.dailyAmount ?? 0;
+    dailyAmount = Math.min(pot.dailyAmount ?? 0, missingAtStartOfToday); // never more than is missing
   }
-  // Never ask for more than is actually missing.
-  dailyAmount = Math.min(dailyAmount, missingAtStartOfToday);
 
   const todayLeft = todayCounts ? Math.max(0, dailyAmount - pot.putAsideToday) : 0;
 

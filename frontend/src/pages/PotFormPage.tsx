@@ -8,7 +8,7 @@ import type { Pot, PotKind, RepeatUnit } from '../lib/api'
 import { authClient } from '../lib/auth-client'
 import { daysUntil, formatMoney, localIsoDate } from '../lib/format'
 import { daysText } from '../lib/labels'
-import { usePot, useSavePot } from '../lib/queries'
+import { usePot, useProfile, useSavePot } from '../lib/queries'
 
 // Icons for the suggestion chips (names come from the language file, same order).
 const SUGGESTION_ICONS: Record<PotKind, string[]> = {
@@ -41,6 +41,7 @@ export function PotFormPage() {
   const { data: session } = authClient.useSession()
   const currency = session?.user.currency ?? 'IQD'
   const existing = usePot(id)
+  const daysOff = useProfile().data?.daysOff ?? []
   const save = useSavePot()
 
   const [filled, setFilled] = useState(!editing)
@@ -81,8 +82,20 @@ export function PotFormPage() {
   // Live preview of the daily amount (counts what's already saved when editing).
   let preview: string | null = null
   const missing = Math.max(0, amount - saved)
+  // Bills that repeat every week or more often: the server spreads them
+  // evenly over working days (a payment on a day off is saved beforehand),
+  // so preview that steady amount: a week's payments / working days a week.
+  const cycleDays =
+    kind !== 'bill' ? null
+    : repeat === 'week' ? 7
+    : repeat === 'custom' && customUnit === 'day' ? Number(customEvery) || null
+    : repeat === 'custom' && customUnit === 'week' ? (Number(customEvery) || 0) * 7 || null
+    : null
   if (amount > 0 && missing === 0) {
     preview = m.potForm.previewFull
+  } else if (amount > 0 && dueDate && cycleDays && cycleDays <= 7) {
+    const perWeek = (amount * 7) / cycleDays
+    preview = fmt(m.potForm.previewSteady, { amount: formatMoney(roundUp(perWeek / (7 - daysOff.length)), currency) })
   } else if (amount > 0 && usesDate && dueDate) {
     const days = Math.max(1, daysUntil(dueDate) + 1)
     preview = fmt(m.potForm.previewDaily, { amount: formatMoney(roundUp(missing / days), currency), days: daysText(days) })

@@ -7,6 +7,10 @@ import { GuestOnly, RequireAuth } from './components/RequireAuth'
 import './index.css'
 import './lib/theme' // applies the saved theme and follows the system setting
 import './lib/install' // catches the browser's install prompt early
+
+// iPhone Safari ignores "user-scalable=no" in the viewport tag, so block its
+// pinch-zoom gesture directly. (Android respects the viewport tag.)
+document.addEventListener('gesturestart', (e) => e.preventDefault())
 import { queryClient } from './lib/queries'
 
 // Each screen is loaded on demand (code splitting): the first download only

@@ -123,6 +123,15 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    /* No browser pull-to-refresh or rubber-band bounce: the app refreshes its
+       own data when reopened and after every change. */
+    overscroll-behavior: none;
+    /* No double-tap zoom (taps also react instantly). Pinch zoom is blocked
+       by the viewport meta tag and, on iPhone, in main.tsx. */
+    touch-action: manipulation;
+  }
+  body {
+    overscroll-behavior: none;
   }
   /* Feel like an app, not a web page: holding or double-tapping text or a
      card doesn't select it (no blue box) or open the copy / look-up menu.

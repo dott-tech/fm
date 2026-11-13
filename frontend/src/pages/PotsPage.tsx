@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { AmountInput } from '../components/AmountInput'
+import { PageHeader } from '../components/AppShell'
 import { api, type Pot, type PotsOverview } from '../lib/api'
 import { authClient } from '../lib/auth-client'
 import { daysUntil, formatDay, formatMoney, localIsoDate } from '../lib/format'
@@ -28,13 +29,18 @@ export function PotsPage() {
   const goals = overview?.pots.filter((p) => p.kind === 'goal') ?? []
 
   return (
-    <main className="mx-auto w-full max-w-md px-4 pt-4 pb-28">
-      <header className="mb-4 flex items-center gap-3">
-        <Link to="/" aria-label="Back" className="-ml-2 grid h-11 w-11 place-items-center rounded-full text-2xl">
-          ←
-        </Link>
-        <h1 className="text-xl font-bold">Bills & goals</h1>
-      </header>
+    <main className="mx-auto w-full max-w-md px-4 pt-6">
+      <PageHeader
+        title="Bills & goals"
+        action={
+          <Link
+            to="/pots/new"
+            className="flex h-11 items-center rounded-xl bg-emerald-700 px-4 font-semibold text-white shadow-sm active:bg-emerald-800"
+          >
+            + Add
+          </Link>
+        }
+      />
 
       {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-red-700">Couldn't load your bills and goals.</p>}
       {!overview && !error && <div className="h-40 animate-pulse rounded-2xl bg-stone-200" aria-label="Loading" />}
@@ -55,16 +61,6 @@ export function PotsPage() {
         </>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 border-t border-stone-200 bg-stone-50/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
-        <div className="mx-auto max-w-md">
-          <Link
-            to="/pots/new"
-            className="flex h-14 items-center justify-center rounded-xl bg-emerald-700 text-lg font-semibold text-white active:bg-emerald-800"
-          >
-            + Add bill or goal
-          </Link>
-        </div>
-      </div>
     </main>
   )
 }

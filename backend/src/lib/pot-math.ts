@@ -43,6 +43,31 @@ export function nextDueDate(isoDay: string, every: number, unit: RepeatUnit): st
   return fromDbDate(date);
 }
 
+// What kind of day today is for setting money aside.
+//   work    = a normal working day
+//   off     = one of the driver's regular days off (e.g. Friday)
+//   skipped = the driver tapped "Skip today"
+export type DayStatus = "work" | "off" | "skipped";
+
+export function weekday(isoDay: string): number {
+  return toDbDate(isoDay).getUTCDay(); // 0 = Sunday ... 6 = Saturday
+}
+
+// Working days from `from` to `to`, both included, not counting days off.
+export function workingDaysBetween(from: string, to: string, daysOff: readonly number[]): number {
+  const total = daysBetween(from, to) + 1;
+  if (total <= 0) return 0;
+  if (daysOff.length === 0) return total;
+  // Whole weeks contribute (7 - days off) each; then count the leftover days.
+  const fullWeeks = Math.floor(total / 7);
+  let count = fullWeeks * (7 - daysOff.length);
+  const startDay = weekday(from);
+  for (let i = 0; i < total % 7; i++) {
+    if (!daysOff.includes((startDay + i) % 7)) count++;
+  }
+  return count;
+}
+
 export type PotPlanInput = {
   targetAmount: number;
   dueDate: string | null; // bill due date or goal deadline
@@ -53,14 +78,20 @@ export type PotPlanInput = {
 
 export type PotPlan = {
   remaining: number; // still missing to reach the target
-  daysLeft: number | null; // including today; null = no date
+  daysLeft: number | null; // WORKING days left, including today if it counts; null = no date
   overdue: boolean;
-  dailyAmount: number; // what to put aside per day (as of the start of today)
-  todayLeft: number; // what's still to put aside today
+  dailyAmount: number; // what to put aside per working day
+  todayLeft: number; // what's still to put aside today (0 on days off / skipped days)
   funded: boolean; // target reached
 };
 
-export function planPot(pot: PotPlanInput, today: string): PotPlan {
+export function planPot(
+  pot: PotPlanInput,
+  today: string,
+  opts: { daysOff?: readonly number[]; todayStatus?: DayStatus } = {},
+): PotPlan {
+  const daysOff = opts.daysOff ?? [];
+  const todayCounts = (opts.todayStatus ?? "work") === "work";
   const remaining = Math.max(0, pot.targetAmount - pot.saved);
 
   // Work out today's amount from the balance at the START of today, so it
@@ -75,17 +106,19 @@ export function planPot(pot: PotPlanInput, today: string): PotPlan {
   let dailyAmount: number;
 
   if (pot.dueDate) {
-    const days = daysBetween(today, pot.dueDate) + 1; // count today
-    overdue = days < 1;
-    daysLeft = Math.max(1, days);
-    dailyAmount = roundUp(missingAtStartOfToday / daysLeft);
+    overdue = daysBetween(today, pot.dueDate) < 0;
+    // Spread over working days: from today if it counts, else from tomorrow.
+    const from = todayCounts ? today : addDays(today, 1);
+    daysLeft = overdue ? (todayCounts ? 1 : 0) : workingDaysBetween(from, pot.dueDate, daysOff);
+    // No working day left before the date: everything is due at once.
+    dailyAmount = roundUp(missingAtStartOfToday / Math.max(1, daysLeft));
   } else {
     dailyAmount = pot.dailyAmount ?? 0;
   }
   // Never ask for more than is actually missing.
   dailyAmount = Math.min(dailyAmount, missingAtStartOfToday);
 
-  const todayLeft = Math.max(0, dailyAmount - pot.putAsideToday);
+  const todayLeft = todayCounts ? Math.max(0, dailyAmount - pot.putAsideToday) : 0;
 
   return { remaining, daysLeft, overdue, dailyAmount, todayLeft, funded: remaining === 0 };
 }

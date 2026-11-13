@@ -27,10 +27,10 @@ export const summary = new Hono<AuthEnv>()
     const [incomeTotals, incomeByDay, expenseByDay, expenseByCategory] = await Promise.all([
       prisma.incomeEntry.aggregate({
         where: inWeek,
-        _sum: { amount: true, tips: true, hours: true, orderCount: true },
+        _sum: { amount: true, tips: true, hours: true, orderCount: true, platformFee: true },
         _count: true,
       }),
-      prisma.incomeEntry.groupBy({ by: ["date"], where: inWeek, _sum: { amount: true } }),
+      prisma.incomeEntry.groupBy({ by: ["date"], where: inWeek, _sum: { amount: true, platformFee: true } }),
       prisma.expense.groupBy({ by: ["date"], where: inWeek, _sum: { amount: true } }),
       prisma.expense.groupBy({ by: ["category"], where: inWeek, _sum: { amount: true } }),
     ]);
@@ -43,7 +43,10 @@ export const summary = new Hono<AuthEnv>()
     });
 
     const income = incomeTotals._sum.amount ?? 0;
-    const expenses = expenseByCategory.reduce((sum, row) => sum + (row._sum.amount ?? 0), 0);
+    // Costs = what the driver paid (expenses) + what platforms kept (fees).
+    const platformFees = incomeTotals._sum.platformFee ?? 0;
+    const paidExpenses = expenseByCategory.reduce((sum, row) => sum + (row._sum.amount ?? 0), 0);
+    const expenses = paidExpenses + platformFees;
     const net = income - expenses;
     const hours = incomeTotals._sum.hours?.toNumber() ?? 0;
     const incomeWithHours = withHours._sum.amount ?? 0;
@@ -62,10 +65,12 @@ export const summary = new Hono<AuthEnv>()
     const days = Array.from({ length: 7 }, (_, i) => {
       const date = addDays(start, i);
       const sameDay = (d: Date) => d.getTime() === toDbDate(date).getTime();
+      const incomeRow = incomeByDay.find((r) => sameDay(r.date));
       return {
         date,
-        income: incomeByDay.find((r) => sameDay(r.date))?._sum.amount ?? 0,
-        expenses: expenseByDay.find((r) => sameDay(r.date))?._sum.amount ?? 0,
+        income: incomeRow?._sum.amount ?? 0,
+        // all costs that day: expenses + platform fees on that day's income
+        expenses: (expenseByDay.find((r) => sameDay(r.date))?._sum.amount ?? 0) + (incomeRow?._sum.platformFee ?? 0),
       };
     });
 
@@ -75,7 +80,8 @@ export const summary = new Hono<AuthEnv>()
       currency: user.currency,
       income,
       tips: incomeTotals._sum.tips ?? 0,
-      expenses,
+      expenses, // all costs, platform fees included
+      platformFees,
       net,
       target,
       // null when no target is set; otherwise how much is still missing (0 = hit).
@@ -86,9 +92,11 @@ export const summary = new Hono<AuthEnv>()
       hours,
       grossPerHour: grossPerHour === null ? null : Math.round(grossPerHour),
       netPerHour, // null when no hours were logged this week
-      expensesByCategory: expenseByCategory
-        .map((row) => ({ category: row.category, amount: row._sum.amount ?? 0 }))
-        .sort((a, b) => b.amount - a.amount),
+      // Cost breakdown; platform fees appear as their own row.
+      expensesByCategory: [
+        ...expenseByCategory.map((row) => ({ category: row.category as string, amount: row._sum.amount ?? 0 })),
+        ...(platformFees > 0 ? [{ category: "platform_fees", amount: platformFees }] : []),
+      ].sort((a, b) => b.amount - a.amount),
       days,
     });
   });

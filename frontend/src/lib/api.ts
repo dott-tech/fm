@@ -42,13 +42,19 @@ export type IncomeEntry = {
   orderCount: number | null
   tips: number | null
   platform: string | null
+  platformFee: number | null // part of `amount` the platform kept (a cost)
   note: string | null
   createdAt: string
 }
 
-export type NewIncome = Omit<IncomeEntry, 'id' | 'createdAt'>
+// platformFee: leave out to use the platform's default rate (e.g. Baly 20%).
+export type NewIncome = Omit<IncomeEntry, 'id' | 'createdAt' | 'platformFee'> & { platformFee?: number | null }
 
-export type IncomeDefaults = { source: IncomeSource; platform: string | null }
+export type IncomeDefaults = {
+  source: IncomeSource
+  platform: string | null
+  platformFeeRates: Record<string, number> // lowercase platform -> share kept, e.g. { baly: 0.2 }
+}
 
 export type ExpenseCategory = 'fuel' | 'oil_change' | 'repairs' | 'tyres' | 'phone_data' | 'bills' | 'other'
 
@@ -64,6 +70,20 @@ export type Expense = {
 export type NewExpense = Omit<Expense, 'id' | 'createdAt'>
 
 export type ExpenseDefaults = { category: ExpenseCategory }
+
+// Cost rows in summaries: expense categories plus the platforms' cut.
+export type CostCategory = ExpenseCategory | 'platform_fees'
+
+// GET/PATCH /api/me
+export type Profile = {
+  id: string
+  name: string
+  email: string
+  role: 'cab_driver' | 'delivery_rider'
+  currency: string
+  weeklyTarget: number | null
+  daysOff: number[]
+}
 
 // ---- Pots: bills and goals with a daily set-aside amount ----
 
@@ -89,8 +109,12 @@ export type Pot = {
   funded: boolean
 }
 
+export type DayStatus = 'work' | 'off' | 'skipped'
+
 export type PotsOverview = {
   date: string
+  todayStatus: DayStatus
+  daysOff: number[]
   todayTotal: number // all pots' daily amounts
   todayLeft: number // what's still to put aside today
   pots: Pot[]
@@ -114,8 +138,9 @@ export type WeekSummary = {
   currency: string
   income: number
   tips: number
-  expenses: number
-  net: number // income - expenses: what's left
+  expenses: number // all costs, platform fees included
+  platformFees: number
+  net: number // income - costs: what's left
   target: number | null
   remainingToTarget: number | null
   targetHit: boolean | null
@@ -124,6 +149,6 @@ export type WeekSummary = {
   hours: number
   grossPerHour: number | null
   netPerHour: number | null
-  expensesByCategory: { category: ExpenseCategory; amount: number }[]
+  expensesByCategory: { category: CostCategory; amount: number }[]
   days: { date: string; income: number; expenses: number }[]
 }

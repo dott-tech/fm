@@ -170,14 +170,14 @@ export function PotFormPage() {
 
   if (!loaded) {
     return (
-      <EntryScreen title={title} formId="pot-form" saving={false} canSave={false} saveLabel="Save">
+      <EntryScreen backTo="/pots" title={title} formId="pot-form" saving={false} canSave={false} saveLabel="Save">
         {error ? <ErrorMessage message={error} /> : <div className="h-64 animate-pulse rounded-2xl bg-stone-200" aria-label="Loading" />}
       </EntryScreen>
     )
   }
 
   return (
-    <EntryScreen title={title} formId="pot-form" saving={saving} canSave saveLabel={editing ? 'Save changes' : 'Save'}>
+    <EntryScreen backTo="/pots" title={title} formId="pot-form" saving={saving} canSave saveLabel={editing ? 'Save changes' : 'Save'}>
       <form id="pot-form" onSubmit={handleSubmit} className="space-y-6">
         {/* The kind can't change after creation: a bill's history isn't a goal's. */}
         {!editing && (

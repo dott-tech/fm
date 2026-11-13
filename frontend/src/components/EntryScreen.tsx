@@ -11,6 +11,7 @@ export function EntryScreen({
   saving,
   canSave,
   children,
+  backTo = '/',
 }: {
   title: string
   formId: string
@@ -18,11 +19,12 @@ export function EntryScreen({
   saving: boolean
   canSave: boolean
   children: ReactNode
+  backTo?: string
 }) {
   return (
     <main className="mx-auto w-full max-w-md px-4 pt-4 pb-28">
       <header className="mb-6 flex items-center gap-3">
-        <Link to="/" aria-label="Back" className="-ml-2 grid h-11 w-11 place-items-center rounded-full text-2xl">
+        <Link to={backTo} aria-label="Back" className="-ml-2 grid h-11 w-11 place-items-center rounded-full text-2xl">
           ←
         </Link>
         <h1 className="text-xl font-bold">{title}</h1>

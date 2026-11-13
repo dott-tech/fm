@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
+import { PageHeader } from '../components/AppShell'
 import { api, type WeekSummary } from '../lib/api'
 import { formatMoney, formatNumber, formatWeekRange, localIsoDate } from '../lib/format'
-import { EXPENSE_CATEGORIES } from '../lib/labels'
+import { costMeta } from '../lib/labels'
 
 function shiftDays(isoDay: string, days: number): string {
   const [y, m, d] = isoDay.split('-').map(Number)
@@ -41,13 +42,8 @@ export function WeekPage() {
   const goTo = (isoDay: string) => setParams(isoDay === today ? {} : { date: isoDay })
 
   return (
-    <main className="mx-auto w-full max-w-md px-4 pt-4 pb-10">
-      <header className="mb-4 flex items-center gap-3">
-        <Link to="/" aria-label="Back" className="-ml-2 grid h-11 w-11 place-items-center rounded-full text-2xl">
-          ←
-        </Link>
-        <h1 className="text-xl font-bold">Weekly summary</h1>
-      </header>
+    <main className="mx-auto w-full max-w-md px-4 pt-6">
+      <PageHeader title="Weekly summary" />
 
       {/* Week switcher */}
       <div className="mb-4 flex items-center justify-between rounded-2xl bg-white p-2 shadow-sm">
@@ -192,12 +188,12 @@ function WeekDetails({ week, isCurrentWeek }: { week: WeekSummary; isCurrentWeek
           <h2 className="mb-3 text-sm font-semibold text-stone-500">Costs by category</h2>
           <ul className="space-y-2 text-sm">
             {week.expensesByCategory.map((row) => {
-              const meta = EXPENSE_CATEGORIES.find((c) => c.value === row.category)
+              const meta = costMeta(row.category)
               const share = week.expenses > 0 ? Math.round((row.amount / week.expenses) * 100) : 0
               return (
                 <li key={row.category} className="flex justify-between">
                   <span>
-                    <span aria-hidden>{meta?.icon}</span> {meta?.label ?? row.category}
+                    <span aria-hidden>{meta.icon}</span> {meta.label}
                   </span>
                   <span>
                     <span className="font-semibold">{formatMoney(row.amount, currency)}</span>{' '}

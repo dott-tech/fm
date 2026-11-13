@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { IncomeEntry } from "../generated/prisma/client.js";
 import { prisma } from "../db.js";
 import { fromDbDate, isoDate, toDbDate } from "../lib/dates.js";
+import { PLATFORM_FEE_RATES, defaultPlatformFee } from "../lib/platforms.js";
 import { idParamSchema, listQuerySchema, money, optionalNote, positiveAmount } from "../lib/schemas.js";
 import { validate } from "../lib/validate.js";
 import { requireAuth, type AuthEnv } from "../middleware/require-auth.js";
@@ -17,12 +18,19 @@ const createIncomeSchema = z.object({
   orderCount: z.number().int().min(0, "Can't be negative").max(1000, "That looks too high").nullish(),
   tips: money.nullish(),
   platform: z.string().trim().max(50).nullish(),
+  // The platform's cut. Leave it out to use the platform's default rate
+  // (e.g. Baly 20%); send 0 or a number to override it for this entry.
+  platformFee: money.nullish(),
   note: optionalNote,
 })
   // `amount` is the total received; `tips` is the part of it that was tips.
   .refine((v) => v.tips == null || v.tips <= v.amount, {
     path: ["tips"],
     message: "Tips can't be more than the total amount",
+  })
+  .refine((v) => v.platformFee == null || v.platformFee <= v.amount, {
+    path: ["platformFee"],
+    message: "The platform's cut can't be more than the fare",
   });
 
 // What the API returns: plain JSON, dates as "YYYY-MM-DD", hours as a number.
@@ -36,6 +44,7 @@ function toJson(entry: IncomeEntry) {
     orderCount: entry.orderCount,
     tips: entry.tips,
     platform: entry.platform,
+    platformFee: entry.platformFee,
     note: entry.note,
     createdAt: entry.createdAt.toISOString(),
   };
@@ -61,6 +70,8 @@ export const income = new Hono<AuthEnv>()
         orderCount: body.orderCount ?? null,
         tips: body.tips ?? null,
         platform: body.platform || null,
+        platformFee:
+          body.platformFee !== undefined ? body.platformFee : defaultPlatformFee(body.platform, body.amount, body.tips),
         note: body.note || null,
       },
     });
@@ -99,6 +110,8 @@ export const income = new Hono<AuthEnv>()
     return c.json({
       source: last?.source ?? fallbackSource,
       platform: last?.platform ?? null,
+      // So the form can preview "Baly takes 20%" before saving.
+      platformFeeRates: PLATFORM_FEE_RATES,
     });
   })
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Pot } from "../generated/prisma/client.js";
 import { prisma } from "../db.js";
 import { fromDbDate, isoDate, toDbDate } from "../lib/dates.js";
-import { nextDueDate, planPot } from "../lib/pot-math.js";
+import { nextDueDate, planPot, weekday, type DayStatus } from "../lib/pot-math.js";
 import { idParamSchema, money, positiveAmount } from "../lib/schemas.js";
 import { validate } from "../lib/validate.js";
 import { requireAuth, type AuthEnv } from "../middleware/require-auth.js";
@@ -78,9 +78,26 @@ async function balances(userId: string, potIds: string[], today: string) {
   return { saved: (id: string) => saved.get(id) ?? 0, putAsideToday: (id: string) => putInToday.get(id) ?? 0 };
 }
 
-function withPlan(pot: Pot, saved: number, putAsideToday: number, today: string) {
+type DayContext = { daysOff: number[]; todayStatus: DayStatus };
+
+// Is today a working day, a regular day off, or a day the driver skipped?
+async function dayContext(userId: string, today: string): Promise<DayContext> {
+  const [user, skip] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { daysOff: true } }),
+    prisma.daySkip.findUnique({ where: { userId_date: { userId, date: toDbDate(today) } } }),
+  ]);
+  const daysOff = user?.daysOff ?? [];
+  const todayStatus: DayStatus = skip ? "skipped" : daysOff.includes(weekday(today)) ? "off" : "work";
+  return { daysOff, todayStatus };
+}
+
+function withPlan(pot: Pot, saved: number, putAsideToday: number, today: string, day: DayContext) {
   const dueDate = pot.dueDate ? fromDbDate(pot.dueDate) : null;
-  const plan = planPot({ targetAmount: pot.targetAmount, dueDate, dailyAmount: pot.dailyAmount, saved, putAsideToday }, today);
+  const plan = planPot(
+    { targetAmount: pot.targetAmount, dueDate, dailyAmount: pot.dailyAmount, saved, putAsideToday },
+    today,
+    day,
+  );
   return {
     id: pot.id,
     kind: pot.kind,
@@ -98,14 +115,17 @@ function withPlan(pot: Pot, saved: number, putAsideToday: number, today: string)
 
 // Active pots for the user, each with its daily plan, plus today's totals.
 async function potsOverview(userId: string, today: string) {
-  const pots = await prisma.pot.findMany({ where: { userId, archivedAt: null } });
+  const [pots, day] = await Promise.all([
+    prisma.pot.findMany({ where: { userId, archivedAt: null } }),
+    dayContext(userId, today),
+  ]);
   const b = await balances(
     userId,
     pots.map((p) => p.id),
     today,
   );
   const rows = pots
-    .map((p) => withPlan(p, b.saved(p.id), b.putAsideToday(p.id), today))
+    .map((p) => withPlan(p, b.saved(p.id), b.putAsideToday(p.id), today, day))
     // Bills first (soonest due first), then goals (soonest deadline, then by name).
     .sort(
       (a, b) =>
@@ -115,6 +135,8 @@ async function potsOverview(userId: string, today: string) {
     );
   return {
     date: today,
+    todayStatus: day.todayStatus, // "work" | "off" | "skipped"
+    daysOff: day.daysOff,
     todayTotal: rows.reduce((s, r) => s + r.dailyAmount, 0),
     todayLeft: rows.reduce((s, r) => s + r.todayLeft, 0),
     pots: rows,
@@ -135,14 +157,39 @@ export const pots = new Hono<AuthEnv>()
     return c.json(await potsOverview(c.get("user").id, c.req.valid("query").date));
   })
 
+  // POST /api/pots/skip { date } -> "Skip today": nothing to put aside today;
+  // the missed amount is spread over the remaining working days.
+  // (Registered before the /:id routes so "skip" isn't read as an id.)
+  .post("/skip", validate("json", dateBody), async (c) => {
+    const userId = c.get("user").id;
+    const { date } = c.req.valid("json");
+    const day = await dayContext(userId, date);
+    if (day.todayStatus === "off") return c.json({ error: "That's already one of your days off" }, 400);
+    // upsert: skipping twice is harmless (one row per day, enforced by the DB)
+    await prisma.daySkip.upsert({
+      where: { userId_date: { userId, date: toDbDate(date) } },
+      create: { userId, date: toDbDate(date) },
+      update: {},
+    });
+    return c.json(await potsOverview(userId, date));
+  })
+
+  // DELETE /api/pots/skip?date=... -> undo "Skip today"
+  .delete("/skip", validate("query", todayQuery), async (c) => {
+    const userId = c.get("user").id;
+    const { date } = c.req.valid("query");
+    await prisma.daySkip.deleteMany({ where: { userId, date: toDbDate(date) } });
+    return c.json(await potsOverview(userId, date));
+  })
+
   // GET /api/pots/:id?date=2026-11-13 -> one pot with its plan (edit screen)
   .get("/:id", validate("param", idParamSchema), validate("query", todayQuery), async (c) => {
     const userId = c.get("user").id;
     const { date } = c.req.valid("query");
     const pot = await findOwnPot(userId, c.req.valid("param").id);
     if (!pot) return c.json({ error: "Not found" }, 404);
-    const b = await balances(userId, [pot.id], date);
-    return c.json(withPlan(pot, b.saved(pot.id), b.putAsideToday(pot.id), date));
+    const [b, day] = await Promise.all([balances(userId, [pot.id], date), dayContext(userId, date)]);
+    return c.json(withPlan(pot, b.saved(pot.id), b.putAsideToday(pot.id), date, day));
   })
 
   // POST /api/pots -> create a bill or goal

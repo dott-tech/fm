@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- App icon: a coin with an upward trend line, on the brand green. -->
+  <rect width="512" height="512" rx="112" fill="#047857"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#ffffff" stroke-width="28"/>
+  <path d="M176 300 L232 244 L272 276 L340 200" fill="none" stroke="#6ee7b7" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M300 200 H340 V240" fill="none" stroke="#6ee7b7" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

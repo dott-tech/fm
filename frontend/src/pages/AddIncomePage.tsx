@@ -44,6 +44,10 @@ export function AddIncomePage() {
   const [orderCount, setOrderCount] = useState('')
   const [tips, setTips] = useState('')
   const [note, setNote] = useState('')
+  // Platform cuts (e.g. { baly: 0.2 }) from the server, and a manual
+  // correction of the cut for this entry (null = use the default).
+  const [feeRates, setFeeRates] = useState<Record<string, number>>({})
+  const [feeOverride, setFeeOverride] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -55,6 +59,7 @@ export function AddIncomePage() {
         if (cancelled) return
         setSource((current) => current ?? defaults.source)
         setPlatform((current) => current || (defaults.platform ?? ''))
+        setFeeRates(defaults.platformFeeRates)
       })
       .catch(() => {
         if (!cancelled) setSource((current) => current ?? 'cab')
@@ -73,6 +78,13 @@ export function AddIncomePage() {
     }
   }
 
+  // The platform's cut, previewed the same way the server computes it:
+  // rate x (amount - tips). Tips go fully to the driver.
+  const feeRate = feeRates[platform.trim().toLowerCase()] ?? null
+  const tipsAmount = tips ? parseAmount(tips) : 0
+  const defaultFee = feeRate === null ? null : Math.round(Math.max(0, amount - tipsAmount) * feeRate)
+  const fee = feeOverride !== null ? parseAmount(feeOverride) : defaultFee
+
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (amount <= 0) {
@@ -89,6 +101,9 @@ export function AddIncomePage() {
       orderCount: optionalNumber(orderCount),
       tips: tips ? parseAmount(tips) : null,
       platform: platform.trim() || null,
+      // Only send a fee when the driver corrected it; otherwise the server
+      // applies the platform's default rate.
+      ...(feeOverride !== null && { platformFee: parseAmount(feeOverride) }),
       note: note.trim() || null,
     }
 
@@ -138,6 +153,42 @@ export function AddIncomePage() {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {feeRate !== null && amount > 0 && fee !== null && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <div className="flex items-start justify-between gap-3">
+              <p>
+                <span className="font-semibold">{platform.trim()}</span> keeps{' '}
+                {feeOverride === null ? (
+                  <>
+                    {Math.round(feeRate * 100)}% (<span className="font-semibold">{formatMoney(fee, currency)}</span>)
+                  </>
+                ) : (
+                  <span className="font-semibold">{formatMoney(fee, currency)}</span>
+                )}
+                <span className="block text-base font-bold">You keep {formatMoney(Math.max(0, amount - fee), currency)}</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => setFeeOverride(feeOverride === null ? String(defaultFee ?? 0) : null)}
+                className="shrink-0 font-semibold text-amber-900 underline underline-offset-2"
+              >
+                {feeOverride === null ? 'Change' : 'Use ' + Math.round(feeRate * 100) + '%'}
+              </button>
+            </div>
+            {feeOverride !== null && (
+              <div className="mt-3">
+                <Field
+                  id="platform-fee"
+                  label={`What ${platform.trim()} actually kept`}
+                  inputMode="numeric"
+                  value={feeOverride ? formatNumber(parseAmount(feeOverride)) : ''}
+                  onChange={(e) => setFeeOverride(e.target.value)}
+                />
+              </div>
+            )}
           </div>
         )}
 

@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useLocation } from 'react-router'
+import { PageHeader } from '../components/AppShell'
 import { RecentActivity } from '../components/RecentActivity'
 import { TargetEditor } from '../components/TargetEditor'
 import { TodaySetAside } from '../components/TodaySetAside'
 import { api, type PotsOverview, type WeekSummary } from '../lib/api'
 import { authClient } from '../lib/auth-client'
 import { daysUntil, formatCompact, formatMoney, formatNumber, formatWeekRange, localIsoDate } from '../lib/format'
-import { EXPENSE_CATEGORIES } from '../lib/labels'
+import { costMeta } from '../lib/labels'
 
 // The home screen. Answers one question fast:
 // "After costs, how much did I make this week, and am I on target?"
+// Order = how often each thing is used: the number, the add buttons, the
+// numbers behind it, today's set-aside, then details.
 export function DashboardPage() {
-  const navigate = useNavigate()
   const location = useLocation()
   const { data: session } = authClient.useSession()
   const flash = (location.state as { flash?: string } | null)?.flash
@@ -35,24 +37,11 @@ export function DashboardPage() {
 
   useEffect(loadWeek, [loadWeek])
 
-  async function handleLogout() {
-    await authClient.signOut()
-    navigate('/login', { replace: true })
-  }
-
   const currency = week?.currency ?? session?.user.currency ?? 'IQD'
 
   return (
-    <main className="mx-auto w-full max-w-md px-4 pt-6 pb-10">
-      <header className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="text-sm text-stone-500">Hi {session?.user.name}</p>
-          <h1 className="text-xl font-bold">This week</h1>
-        </div>
-        <button onClick={handleLogout} className="h-10 rounded-full px-4 text-sm font-semibold text-stone-500 active:bg-stone-200">
-          Log out
-        </button>
-      </header>
+    <main className="mx-auto w-full max-w-md px-4 pt-6">
+      <PageHeader title="This week" subtitle={session ? `Hi ${session.user.name}` : undefined} />
 
       {flash && (
         <p role="status" className="mb-4 rounded-xl bg-emerald-50 px-4 py-3 font-medium text-emerald-800">
@@ -72,18 +61,35 @@ export function DashboardPage() {
       {week === null ? (
         !loadError && <div className="h-52 animate-pulse rounded-3xl bg-stone-200" aria-label="Loading" />
       ) : (
-        <>
-          <HeroCard
-            week={week}
-            editingTarget={editingTarget}
-            onEditTarget={() => setEditingTarget(true)}
-            onTargetSaved={() => {
-              setEditingTarget(false)
-              loadWeek()
-            }}
-            onCancelTarget={() => setEditingTarget(false)}
-          />
+        <HeroCard
+          week={week}
+          editingTarget={editingTarget}
+          onEditTarget={() => setEditingTarget(true)}
+          onTargetSaved={() => {
+            setEditingTarget(false)
+            loadWeek()
+          }}
+          onCancelTarget={() => setEditingTarget(false)}
+        />
+      )}
 
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <Link
+          to="/income/new"
+          className="flex h-14 items-center justify-center rounded-2xl bg-emerald-700 text-lg font-semibold text-white shadow-sm active:bg-emerald-800"
+        >
+          + Income
+        </Link>
+        <Link
+          to="/expenses/new"
+          className="flex h-14 items-center justify-center rounded-2xl bg-stone-800 text-lg font-semibold text-white shadow-sm active:bg-stone-900"
+        >
+          − Expense
+        </Link>
+      </div>
+
+      {week && (
+        <>
           {/* KPI row: the three numbers behind the big one. */}
           <div className="mt-3 grid grid-cols-3 gap-2">
             <StatTile label="Income" value={formatCompact(week.income)} unit={currency} />
@@ -100,33 +106,19 @@ export function DashboardPage() {
               {formatMoney(week.grossPerHour ?? 0, currency)}/h before costs).
             </p>
           )}
-          <Link to="/week" className="mt-2 block px-1 py-2 text-sm font-semibold text-emerald-700">
-            Weekly summary & past weeks →
-          </Link>
-
-          {pots && <TodaySetAside overview={pots} currency={currency} onChange={setPots} />}
         </>
       )}
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <Link
-          to="/income/new"
-          className="flex h-14 items-center justify-center rounded-xl bg-emerald-700 text-lg font-semibold text-white active:bg-emerald-800"
-        >
-          + Income
-        </Link>
-        <Link
-          to="/expenses/new"
-          className="flex h-14 items-center justify-center rounded-xl bg-stone-800 text-lg font-semibold text-white active:bg-stone-900"
-        >
-          − Expense
-        </Link>
-      </div>
+      {pots && (
+        <div className="mt-5">
+          <TodaySetAside overview={pots} currency={currency} onChange={setPots} />
+        </div>
+      )}
 
       {week && week.expensesByCategory.length > 0 && <CostBreakdown week={week} />}
 
       <div className="mt-6">
-        <RecentActivity currency={currency} />
+        <RecentActivity currency={currency} onChanged={loadWeek} />
       </div>
     </main>
   )
@@ -225,12 +217,12 @@ function CostBreakdown({ week }: { week: WeekSummary }) {
       <h2 className="mb-2 text-sm font-semibold text-stone-500">Where costs went</h2>
       <ul className="space-y-3 rounded-2xl bg-white p-4 shadow-sm">
         {week.expensesByCategory.map((row) => {
-          const meta = EXPENSE_CATEGORIES.find((c) => c.value === row.category)
+          const meta = costMeta(row.category)
           return (
             <li key={row.category}>
               <div className="flex items-baseline justify-between text-sm">
                 <span>
-                  <span aria-hidden>{meta?.icon}</span> {meta?.label ?? row.category}
+                  <span aria-hidden>{meta.icon}</span> {meta.label}
                 </span>
                 <span className="font-semibold">{formatMoney(row.amount, week.currency)}</span>
               </div>

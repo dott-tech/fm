@@ -124,6 +124,25 @@
   html {
     -webkit-tap-highlight-color: transparent;
   }
+  /* Feel like an app, not a web page: holding or double-tapping text or a
+     card doesn't select it (no blue box) or open the copy / look-up menu.
+     Fields you type in keep normal selection, so copy/paste still works. */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input,
+  textarea,
+  [contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
+  img,
+  svg {
+    -webkit-user-drag: none;
+  }
   body {
     @apply min-h-dvh bg-canvas text-ink antialiased;
     /* System fonts render Arabic well on Android (Noto) and iOS. */

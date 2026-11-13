@@ -15,7 +15,7 @@ Run these from the `backend` folder.
    ```
 
 2. Deploy once. This builds the frontend and uploads everything, then prints
-   the app's URL, e.g. `https://driver-finance.<your-subdomain>.workers.dev`.
+   the app's URL, e.g. `https://fm.<your-subdomain>.workers.dev`.
    The API doesn't work until step 3 is done.
 
    ```bash
@@ -35,6 +35,17 @@ Run these from the `backend` folder.
    `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
 
    Secrets apply right away; no redeploy needed.
+
+## Git auto-deploy (Cloudflare dashboard)
+
+Workers -> fm -> Settings -> Build, with the root directory left empty
+(the repo root):
+
+- Build command: `npm run build`
+- Deploy command: `npm run deploy`
+
+Every push to `main` then builds and deploys. The root `package.json`
+holds these two scripts; the app itself is in `frontend/` and `backend/`.
 
 ## Every later release
 
@@ -60,5 +71,5 @@ It reads secrets from `backend/.dev.vars` (git-ignored, same format as
   Prisma 7's `migrate dev` no longer does it.
 - On Workers each request gets its own database client: Cloudflare doesn't
   let one request use a connection opened by another.
-- Custom domain: Cloudflare dashboard -> Workers -> driver-finance ->
+- Custom domain: Cloudflare dashboard -> Workers -> fm ->
   Settings -> Domains. Then update `BETTER_AUTH_URL` and `FRONTEND_URL`.

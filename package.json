@@ -1,0 +1,9 @@
+{
+  "name": "fm",
+  "private": true,
+  "description": "Build and deploy entry points for Cloudflare (run from the repo root). The app itself lives in frontend/ and backend/.",
+  "scripts": {
+    "build": "cd frontend && npm ci && npm run build && cd ../backend && npm ci && npx prisma generate",
+    "deploy": "cd backend && npx wrangler deploy"
+  }
+}

@@ -17,5 +17,9 @@
     "run_worker_first": ["/api/*"]
   },
   "vars": { "NODE_ENV": "production" },
+  // Keep variables added in the Cloudflare dashboard when deploying
+  // (otherwise each deploy deletes dashboard Text variables). Secrets are
+  // always kept either way.
+  "keep_vars": true,
   "observability": { "enabled": true }
 }

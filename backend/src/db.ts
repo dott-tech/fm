@@ -3,14 +3,15 @@ import { PrismaNeon } from "@prisma/adapter-neon";
 // "#prisma" = the Node or the Workers build of the client (see package.json "imports").
 import { PrismaClient } from "#prisma";
 
-const connectionString = process.env["DATABASE_URL"];
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set. Copy .env.example to .env and fill it in.");
-}
-
 // The Neon adapter talks to Neon over WebSockets, which works on Cloudflare
 // Workers, where normal long-lived TCP connections don't.
+// DATABASE_URL is checked here, on first use, not when the file loads:
+// Cloudflare starts the Worker once while uploading it, before secrets exist.
 function createClient() {
+  const connectionString = process.env["DATABASE_URL"];
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set. Copy .env.example to .env (or add it as a Cloudflare secret).");
+  }
   return new PrismaClient({ adapter: new PrismaNeon({ connectionString }) });
 }
 

@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
-import { auth } from "./auth.js";
+import { getAuth } from "./auth.js";
 import { dbErrorResponse } from "./lib/db-errors.js";
 import { dashboard } from "./routes/dashboard.js";
 import { expenses } from "./routes/expenses.js";
@@ -18,7 +18,7 @@ app.use(logger());
 
 // All Better Auth endpoints: /api/auth/sign-up/email, /api/auth/sign-in/email,
 // /api/auth/sign-out, /api/auth/get-session, ...
-app.on(["GET", "POST"], "/auth/*", (c) => auth.handler(c.req.raw));
+app.on(["GET", "POST"], "/auth/*", (c) => getAuth().handler(c.req.raw));
 
 app.route("/health", health);
 app.route("/me", me);

@@ -9,7 +9,10 @@ const REQUIRED = ["DATABASE_URL", "BETTER_AUTH_SECRET", "BETTER_AUTH_URL", "FRON
 export const health = new Hono().get("/", async (c) => {
   const missing = REQUIRED.filter((name) => !process.env[name]);
   if (missing.length > 0) {
-    return c.json({ ok: false, missing }, 503);
+    // Also list the setting NAMES Cloudflare passed to this Worker (no
+    // values), to tell "not added" apart from "added under another name".
+    const received = Object.keys((c.env ?? {}) as object).sort();
+    return c.json({ ok: false, missing, received }, 503);
   }
   try {
     await prisma.$queryRaw`SELECT 1`;
